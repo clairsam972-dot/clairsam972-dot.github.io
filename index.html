@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>En Plein Air</title>
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=16">
 </head>
 
 <body>
@@ -52,7 +52,12 @@
     <p><strong>Présentation :</strong></p>
     <p id="profil-presentation"></p>
     <button type="button" class="contour" id="bouton-localiser-profil">📍 Mettre à jour ma localisation</button>
-<p id="message-localisation"></p>
+    <p id="message-localisation"></p>
+  </div>
+
+  <div class="carte" id="carte-abonnement">
+    <p><strong>Abonnement :</strong> <span id="statut-abonnement">Chargement...</span></p>
+    <button type="button" class="primaire" id="bouton-abonnement" style="display:none;">S'abonner — 20€/mois</button>
   </div>
 
   <div class="section-galerie">
@@ -149,7 +154,7 @@
         <span>📍 Île-de-France</span>
         <span>👥 2 à 6 personnes</span>
         <span>⏱️ 2 à 4 h</span>
-        <span>💶 5€ / participant</span>
+        <span>🔑 Accès via abonnement</span>
       </div>
       <a class="primaire" href="#aventure-nature">Voir l'aventure</a>
     </article>
@@ -165,7 +170,7 @@
         <span>📍 Île-de-France</span>
         <span>👥 2 à 8 personnes</span>
         <span>⏱️ Une soirée</span>
-        <span>💶 5€ / participant</span>
+        <span>🔑 Accès via abonnement</span>
       </div>
       <a class="primaire" href="#aventure-nuit">Voir l'aventure</a>
     </article>
@@ -181,7 +186,7 @@
         <span>📍 Lieu secret</span>
         <span>👥 2 à 10 personnes</span>
         <span>⏱️ 3 à 5 h</span>
-        <span>💶 5€ / participant</span>
+        <span>🔑 Accès via abonnement</span>
       </div>
       <a class="primaire" href="#aventure-defi">Voir l'aventure</a>
     </article>
@@ -206,7 +211,7 @@
     <h3>Comment ça marche côté tarifs ?</h3>
     <p>✅ Inscription gratuite pour tout le monde.</p>
     <p>✅ Créer et proposer une aventure : gratuit.</p>
-    <p>💶 Participer à une aventure : 5€ par personne.</p>
+    <p>🔑 Accès à toutes les aventures : abonnement 20€/mois.</p>
     <p>🃏 Bloqué sur une énigme ? Un joker débloque la réponse pour 10€.</p>
   </article>
 </section>
@@ -225,11 +230,11 @@
     <span>📍 Île-de-France</span>
     <span>👥 2 à 6 personnes</span>
     <span>⏱️ 2 à 4 h</span>
-    <span>💶 5€ / participant</span>
+    <span>🔑 Accès via abonnement</span>
   </div>
 
   <div class="actes">
-    <a class="primaire" href="#inscription">Réserver — 5€</a>
+    <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
     <a class="contour" href="#chasse">Retour</a>
   </div>
 </section>
@@ -248,11 +253,11 @@
     <span>📍 Île-de-France</span>
     <span>👥 2 à 8 personnes</span>
     <span>⏱️ Une soirée</span>
-    <span>💶 5€ / participant</span>
+    <span>🔑 Accès via abonnement</span>
   </div>
 
   <div class="actes">
-    <a class="primaire" href="#inscription">Réserver — 5€</a>
+    <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
     <a class="contour" href="#chasse">Retour</a>
   </div>
 </section>
@@ -271,11 +276,11 @@
     <span>📍 Lieu secret</span>
     <span>👥 2 à 10 personnes</span>
     <span>⏱️ 3 à 5 h</span>
-    <span>💶 5€ / participant</span>
+    <span>🔑 Accès via abonnement</span>
   </div>
 
   <div class="actes">
-    <a class="primaire" href="#inscription">Réserver — 5€</a>
+    <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
     <a class="contour" href="#chasse">Retour</a>
   </div>
 </section>
@@ -434,7 +439,7 @@
   </p>
 
   <form class="formulaire-inscription-form">
-    
+
     <label for="pseudo-homme">Pseudonyme</label>
     <input type="text" id="pseudo-homme" name="pseudo" required>
 
@@ -1060,10 +1065,98 @@ async function afficherProfil(accessToken, userEmail, userId) {
   document.getElementById("profil-presentation").textContent = profil["Présentation"] || "";
 
   window.monProfilCourant = profil;
+  afficherStatutAbonnement(profil);
 
   idUtilisateurCourant = userId;
   await chargerPhotoProfil();
   await chargerGalerie();
+}
+
+// Affiche le statut d'abonnement du membre et le bouton pour s'abonner
+function afficherStatutAbonnement(profil) {
+  const statut = document.getElementById("statut-abonnement");
+  const bouton = document.getElementById("bouton-abonnement");
+
+  if (profil.abonnement_actif) {
+    statut.textContent = "Actif ✅ — accès complet aux aventures";
+    bouton.style.display = "none";
+  } else {
+    statut.textContent = "Aucun abonnement actif";
+    bouton.style.display = "";
+  }
+}
+
+document.getElementById("bouton-abonnement").addEventListener("click", async function() {
+  const token = localStorage.getItem("outdoor_access_token");
+
+  if (!token) {
+    alert("Vous devez être connecté.");
+    return;
+  }
+
+  const bouton = this;
+
+  await avecChargement(bouton, "Redirection vers le paiement...", async function() {
+    try {
+      const response = await fetch(SUPABASE_URL + "/functions/v1/create-subscription-session", {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          return_url: window.location.origin + window.location.pathname
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || "Erreur inconnue");
+      }
+
+      window.location.href = data.url;
+
+    } catch (error) {
+      console.error(error);
+      alert("Impossible de démarrer l'abonnement. Réessayez plus tard.");
+    }
+  });
+});
+
+// Retour de Stripe après souscription : le webhook peut prendre
+// quelques secondes à traiter, donc on réessaie plusieurs fois.
+async function gererRetourAbonnement() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("abonnement") !== "succes") return;
+
+  window.history.replaceState(null, "", window.location.pathname + "#espace-membre");
+
+  const token = localStorage.getItem("outdoor_access_token");
+  if (!token) return;
+
+  const statut = document.getElementById("statut-abonnement");
+  statut.textContent = "Confirmation du paiement en cours...";
+
+  for (let essai = 0; essai < 8; essai++) {
+    const response = await fetch(
+      SUPABASE_URL + "/rest/v1/Inscription?user_id=eq." + idUtilisateurCourant + "&select=abonnement_actif",
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token } }
+    );
+    const resultats = await response.json();
+
+    if (resultats.length > 0 && resultats[0].abonnement_actif) {
+      window.monProfilCourant.abonnement_actif = true;
+      afficherStatutAbonnement(window.monProfilCourant);
+      alert("Abonnement activé, bienvenue !");
+      return;
+    }
+
+    await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+  }
+
+  statut.textContent = "Paiement en cours de confirmation, actualisez la page dans un instant.";
 }
 
 // Chemin fixe (hors galerie) où est stockée la photo de profil du membre
@@ -1445,6 +1538,7 @@ window.addEventListener("DOMContentLoaded", async function() {
 
       mettreAJourNavigation(true);
       await afficherProfil(token, user.email, user.id);
+      await gererRetourAbonnement();
       if (!window.retourJokerEnCours) {
         window.location.hash = "espace-membre";
       }
@@ -1619,6 +1713,12 @@ async function chargerListeAventures() {
   if (!token) return;
 
   const conteneur = document.getElementById("liste-aventures");
+
+  if (!window.monProfilCourant || !window.monProfilCourant.abonnement_actif) {
+    conteneur.innerHTML = '<p>Un abonnement actif (20€/mois) est nécessaire pour découvrir les aventures. <a href="#espace-membre">Voir mon profil</a></p>';
+    return;
+  }
+
   conteneur.innerHTML = '<p class="chargement">Chargement des aventures...</p>';
 
   try {
@@ -1665,6 +1765,11 @@ async function chargerListeAventures() {
 
 // Démarre une aventure : charge ses indices
 async function demarrerAventure(aventure) {
+  if (!window.monProfilCourant || !window.monProfilCourant.abonnement_actif) {
+    alert("Un abonnement actif est nécessaire pour participer aux aventures.");
+    return;
+  }
+
   const token = localStorage.getItem("outdoor_access_token");
 
   try {
