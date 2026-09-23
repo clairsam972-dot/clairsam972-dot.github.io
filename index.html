@@ -1364,15 +1364,16 @@ async function supprimerMedia(nomFichier) {
     alert("Erreur lors de la suppression : " + error.message);
   }
 }
-
 document.getElementById("bouton-ajouter-media").addEventListener("click", function() {
   const input = document.getElementById("input-media");
+  input.setAttribute("accept", "image/*,video/*");
   input.removeAttribute("capture");
   input.click();
 });
 
 document.getElementById("bouton-prendre-photo").addEventListener("click", function() {
   const input = document.getElementById("input-media");
+  input.setAttribute("accept", "image/*");
   input.setAttribute("capture", "environment");
   input.click();
 });
