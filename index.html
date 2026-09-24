@@ -288,52 +288,37 @@
 
 <section id="histoires" class="section">
   <p class="sourcil">HISTOIRES</p>
-  <h2>Ils ont vécu l'aventure</h2>
+  <h2>Vos histoires &amp; fantasmes</h2>
   <p>
-    Quelques souvenirs partagés par des membres qui ont
-    batifolé en plein air grâce à En Plein Air.
+    Souvenirs vécus ou envies secrètes : chaque membre peut
+    partager son histoire avec la communauté.
   </p>
 
-  <div class="cartes">
-
-    <article class="carte">
-      <div class="icone">🌲</div>
-      <p>
-        « On a réservé Évasion nature sans trop savoir à quoi
-        s'attendre. Le lieu était magique, un vrai moment
-        complice, loin de tout. »
-      </p>
-      <h3>Léa &amp; Max</h3>
-      <p><em>Couple · Évasion nature</em></p>
-    </article>
-
-    <article class="carte">
-      <div class="icone">🔥</div>
-      <p>
-        « Nuit sauvage restera un souvenir marquant. L'ambiance,
-        le mystère... on ne voit plus les sorties en plein air
-        pareil après ça. »
-      </p>
-      <h3>Yann</h3>
-      <p><em>34 ans · Nuit sauvage</em></p>
-    </article>
-
-    <article class="carte">
-      <div class="icone">🗺️</div>
-      <p>
-        « Le Défi mystère nous a fait rire, chercher, et
-        finalement nous rapprocher. Parfait pour sortir de la
-        routine. »
-      </p>
-      <h3>Sofia &amp; Inès</h3>
-      <p><em>Couple · Défi mystère</em></p>
-    </article>
-
-
+  <div class="actes">
+    <button type="button" class="primaire" id="bouton-ecrire-histoire">✍️ Écrire mon histoire</button>
   </div>
 
-  <div class="actes">
-    <a class="primaire" href="#chasse">Vivre ma propre aventure</a>
+  <form id="formulaire-histoire" style="display:none;">
+    <label for="histoire-titre">Titre</label>
+    <input type="text" id="histoire-titre" maxlength="120" placeholder="Ex : Une nuit sous les étoiles" required>
+
+    <label for="histoire-type">C'est...</label>
+    <select id="histoire-type">
+      <option value="Histoire vécue">Une histoire vécue</option>
+      <option value="Fantasme">Un fantasme</option>
+    </select>
+
+    <label for="histoire-contenu">Ton histoire</label>
+    <textarea id="histoire-contenu" rows="8" maxlength="3000" placeholder="Raconte..." required></textarea>
+
+    <p><small>Restez respectueux : pas de nom réel, pas d'information permettant d'identifier quelqu'un.</small></p>
+
+    <button type="submit" class="primaire" id="bouton-publier-histoire">Publier</button>
+    <button type="button" class="contour" id="bouton-annuler-histoire">Annuler</button>
+  </form>
+
+  <div class="cartes" id="liste-histoires">
+    <p>Chargement des histoires...</p>
   </div>
 </section>
 
@@ -1094,6 +1079,7 @@ async function afficherProfil(accessToken, userEmail, userId) {
   idUtilisateurCourant = userId;
   await chargerPhotoProfil();
   await chargerGalerie();
+  chargerHistoires();
 }
 
 // Affiche le statut d'abonnement du membre et le bouton pour s'abonner
@@ -2063,6 +2049,7 @@ async function deconnexion() {
   document.getElementById("photo-principale").style.display = "none";
   document.getElementById("placeholder-photo").style.display = "";
   mettreAJourNavigation(false);
+  chargerHistoires();
   window.location.hash = "connexion";
   alert("Vous êtes déconnecté.");
 }
@@ -2372,6 +2359,149 @@ document.getElementById("bouton-envoyer-commun").addEventListener("click", envoy
 document.getElementById("chat-commun-input").addEventListener("keydown", function(e) {
   if (e.key === "Enter") envoyerMessageCommun();
 });
+
+// Histoires & fantasmes écrits par les membres (gratuits ou abonnés)
+function afficherFormulaireHistoire(visible) {
+  document.getElementById("formulaire-histoire").style.display = visible ? "" : "none";
+  document.getElementById("bouton-ecrire-histoire").style.display = visible ? "none" : "";
+}
+
+document.getElementById("bouton-ecrire-histoire").addEventListener("click", function() {
+  if (!localStorage.getItem("outdoor_access_token")) {
+    alert("Inscris-toi ou connecte-toi pour écrire ton histoire.");
+    window.location.hash = "inscription";
+    return;
+  }
+  afficherFormulaireHistoire(true);
+  document.getElementById("histoire-titre").focus();
+});
+
+document.getElementById("bouton-annuler-histoire").addEventListener("click", function() {
+  afficherFormulaireHistoire(false);
+});
+
+document.getElementById("formulaire-histoire").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const token = localStorage.getItem("outdoor_access_token");
+  if (!token || !idUtilisateurCourant) {
+    alert("Vous devez être connecté.");
+    return;
+  }
+
+  const titre = document.getElementById("histoire-titre").value.trim();
+  const contenu = document.getElementById("histoire-contenu").value.trim();
+  const type = document.getElementById("histoire-type").value;
+  if (!titre || !contenu) return;
+
+  const bouton = document.getElementById("bouton-publier-histoire");
+  await avecChargement(bouton, "Publication...", async function() {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/histoires", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        user_id: idUtilisateurCourant,
+        titre: titre,
+        type: type,
+        contenu: contenu
+      })
+    });
+
+    if (!response.ok) {
+      console.error(await response.text());
+      alert("Impossible de publier l'histoire.");
+      return;
+    }
+
+    document.getElementById("formulaire-histoire").reset();
+    afficherFormulaireHistoire(false);
+    await chargerHistoires();
+  });
+});
+
+async function chargerHistoires() {
+  const conteneur = document.getElementById("liste-histoires");
+  const token = localStorage.getItem("outdoor_access_token");
+
+  try {
+    const response = await fetch(
+      SUPABASE_URL + "/rest/v1/histoires?select=*&order=created_at.desc&limit=50",
+      { headers: token ? { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token } : { "apikey": SUPABASE_KEY } }
+    );
+    if (!response.ok) throw new Error(await response.text());
+    const histoires = await response.json();
+
+    conteneur.innerHTML = "";
+    if (histoires.length === 0) {
+      conteneur.innerHTML = "<p>Aucune histoire pour l'instant. Sois le premier à raconter la tienne !</p>";
+      return;
+    }
+
+    histoires.forEach(function(h) {
+      const carte = document.createElement("article");
+      carte.className = "carte";
+
+      const icone = document.createElement("div");
+      icone.className = "icone";
+      icone.textContent = h.type === "Fantasme" ? "🔥" : "🌲";
+
+      const titre = document.createElement("h3");
+      titre.textContent = h.titre;
+
+      const texte = document.createElement("p");
+      texte.textContent = h.contenu;
+      texte.style.whiteSpace = "pre-line";
+
+      const infos = document.createElement("p");
+      const em = document.createElement("em");
+      const date = new Date(h.created_at).toLocaleDateString("fr-FR");
+      em.textContent = (h.pseudonyme || "Membre") + " · " + h.type + " · " + date;
+      infos.appendChild(em);
+
+      carte.appendChild(icone);
+      carte.appendChild(titre);
+      carte.appendChild(texte);
+      carte.appendChild(infos);
+
+      if (idUtilisateurCourant && h.user_id === idUtilisateurCourant) {
+        const supprimer = document.createElement("button");
+        supprimer.type = "button";
+        supprimer.className = "contour";
+        supprimer.textContent = "Supprimer";
+        supprimer.addEventListener("click", function() { supprimerHistoire(h.id); });
+        carte.appendChild(supprimer);
+      }
+
+      conteneur.appendChild(carte);
+    });
+  } catch (error) {
+    console.error("Erreur histoires :", error);
+    conteneur.innerHTML = "<p>Impossible de charger les histoires.</p>";
+  }
+}
+
+async function supprimerHistoire(id) {
+  if (!confirm("Supprimer cette histoire ?")) return;
+  const token = localStorage.getItem("outdoor_access_token");
+  const response = await fetch(SUPABASE_URL + "/rest/v1/histoires?id=eq." + id, {
+    method: "DELETE",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token }
+  });
+  if (!response.ok) {
+    alert("Impossible de supprimer l'histoire.");
+    return;
+  }
+  await chargerHistoires();
+}
+
+window.addEventListener("hashchange", function() {
+  if (window.location.hash === "#histoires") chargerHistoires();
+});
+chargerHistoires();
 
 // Retour depuis Stripe après le paiement d'un joker : on recharge
 // l'aventure concernée, on vérifie que le webhook a bien confirmé le
