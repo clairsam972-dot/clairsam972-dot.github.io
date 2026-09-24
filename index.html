@@ -24,6 +24,7 @@
     <a href="#espace-membre" class="contour" id="nav-profil" style="display:none;">Mon profil</a>
     <a href="#decouvrir-aventures" class="primaire" id="nav-decouvrir" style="display:none;">Découvrir les aventures</a>
     <a class="contour" id="nav-annuaire" style="display:none;" href="#annuaire-membres">Découvrir les membres</a>
+    <a class="contour" id="nav-chat-commun" style="display:none;" href="#chat-commun">Chat commun</a>
     <a href="#creer-aventure" class="contour" id="nav-creer-aventure" style="display:none;">Créer une aventure</a>
     <button class="contour" id="nav-deconnexion" style="display:none;" onclick="deconnexion()">Se déconnecter</button>
   </nav>
@@ -722,6 +723,27 @@
   <a class="contour" href="#espace-membre">Retour à mon profil</a>
 </section>
 
+<section id="chat-commun" class="section">
+  <p class="sourcil">COMMUNAUTÉ</p>
+  <h2>Chat commun</h2>
+  <p>Le salon de discussion ouvert à tous les abonnés.</p>
+
+  <div id="chat-commun-verrou" style="display:none;">
+    <p>Un abonnement actif (20€/mois) est nécessaire pour accéder au chat commun.</p>
+    <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
+  </div>
+
+  <div id="chat-commun-zone" style="display:none;">
+    <div id="chat-commun-messages" class="chat-messages" style="height:400px;"></div>
+    <div class="chat-input-zone">
+      <input type="text" id="chat-commun-input" maxlength="1000" placeholder="Écris ton message à la communauté...">
+      <button type="button" id="bouton-envoyer-commun">Envoyer</button>
+    </div>
+  </div>
+
+  <a class="contour" href="#espace-membre">Retour à mon profil</a>
+</section>
+
 <div id="modale-chat" class="modale-overlay" style="display:none;">
   <div class="modale-contenu">
     <div class="modale-header">
@@ -876,6 +898,8 @@ function mettreAJourNavigation(connecte) {
   document.getElementById("nav-profil").style.display = connecte ? "" : "none";
   document.getElementById("nav-decouvrir").style.display = connecte ? "" : "none";
   document.getElementById("nav-annuaire").style.display = connecte ? "" : "none";
+  document.getElementById("nav-chat-commun").style.display = connecte ? "" : "none";
+  document.getElementById("chat-commun").style.display = connecte ? "" : "none";
   document.getElementById("nav-creer-aventure").style.display = connecte ? "" : "none";
   document.getElementById("nav-deconnexion").style.display = connecte ? "" : "none";
 
@@ -2005,6 +2029,11 @@ window.addEventListener("hashchange", function() {
   if (window.location.hash === "#annuaire-membres") {
     appliquerFiltre();
   }
+  if (window.location.hash === "#chat-commun") {
+    ouvrirChatCommun();
+  } else {
+    arreterChatCommun();
+  }
 });
 
 async function deconnexion() {
@@ -2232,6 +2261,117 @@ async function envoyerMessage() {
   input.value = "";
   await chargerMessages();
 }
+
+// Chat commun : salon ouvert à tous les abonnés, rafraîchi toutes les 5 s
+// tant que la section est affichée.
+let intervalleChatCommun = null;
+
+function ouvrirChatCommun() {
+  const abonne = window.monProfilCourant && window.monProfilCourant.abonnement_actif;
+  document.getElementById("chat-commun-verrou").style.display = abonne ? "none" : "";
+  document.getElementById("chat-commun-zone").style.display = abonne ? "" : "none";
+
+  if (!abonne) return;
+
+  chargerChatCommun(true);
+  if (!intervalleChatCommun) {
+    intervalleChatCommun = setInterval(function() { chargerChatCommun(false); }, 5000);
+  }
+}
+
+function arreterChatCommun() {
+  if (intervalleChatCommun) {
+    clearInterval(intervalleChatCommun);
+    intervalleChatCommun = null;
+  }
+}
+
+async function chargerChatCommun(defilerEnBas) {
+  const token = localStorage.getItem("outdoor_access_token");
+  if (!token) return;
+
+  try {
+    const response = await fetch(
+      SUPABASE_URL + "/rest/v1/messages_communs?select=*&order=created_at.desc&limit=100",
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token } }
+    );
+    if (!response.ok) throw new Error(await response.text());
+
+    const messages = (await response.json()).reverse();
+    const container = document.getElementById("chat-commun-messages");
+    const etaitEnBas = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+
+    container.innerHTML = "";
+
+    if (messages.length === 0) {
+      container.innerHTML = "<p>Aucun message pour l'instant. Lance la discussion !</p>";
+      return;
+    }
+
+    messages.forEach(function(m) {
+      const bulle = document.createElement("div");
+      bulle.className = "msg-bulle " + (m.user_id === idUtilisateurCourant ? "msg-envoye" : "msg-recu");
+
+      const auteur = document.createElement("strong");
+      const heure = new Date(m.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      auteur.textContent = (m.pseudonyme || "Membre") + " · " + heure;
+      auteur.style.display = "block";
+      auteur.style.fontSize = "0.8em";
+
+      const texte = document.createElement("span");
+      texte.textContent = m.content;
+
+      bulle.appendChild(auteur);
+      bulle.appendChild(texte);
+      container.appendChild(bulle);
+    });
+
+    if (defilerEnBas || etaitEnBas) {
+      container.scrollTop = container.scrollHeight;
+    }
+  } catch (error) {
+    console.error("Erreur chat commun :", error);
+  }
+}
+
+async function envoyerMessageCommun() {
+  const token = localStorage.getItem("outdoor_access_token");
+  const input = document.getElementById("chat-commun-input");
+  const contenu = input.value.trim();
+  if (!contenu || !token || !window.monProfilCourant) return;
+
+  const response = await fetch(
+    SUPABASE_URL + "/rest/v1/messages_communs",
+    {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        user_id: idUtilisateurCourant,
+        pseudonyme: window.monProfilCourant.Pseudonyme,
+        content: contenu
+      })
+    }
+  );
+
+  if (!response.ok) {
+    console.error(await response.text());
+    alert("Impossible d'envoyer le message.");
+    return;
+  }
+
+  input.value = "";
+  await chargerChatCommun(true);
+}
+
+document.getElementById("bouton-envoyer-commun").addEventListener("click", envoyerMessageCommun);
+document.getElementById("chat-commun-input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") envoyerMessageCommun();
+});
 
 // Retour depuis Stripe après le paiement d'un joker : on recharge
 // l'aventure concernée, on vérifie que le webhook a bien confirmé le
