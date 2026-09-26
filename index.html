@@ -799,9 +799,9 @@
     une expérience ou un contenu qui ne respecte pas les règles.
   </p>
 
-  <form>
+  <form id="formulaire-signalement">
     <label for="motif">Motif du rapport</label>
-    <select id="motif" name="motif">
+    <select id="motif" name="motif" required>
       <option value="">Choisir un motif</option>
       <option>Comportement inapproprié</option>
       <option>Non-respect des règles</option>
@@ -811,10 +811,11 @@
     </select>
 
     <label for="message">Décrivez le problème</label>
-    <textarea id="message" name="message" rows="5"
+    <textarea id="message" name="message" rows="5" maxlength="2000" required
       placeholder="Expliquez ce qui s'est passé..."></textarea>
 
-    <button type="submit" class="primaire">Envoyer le rapport</button>
+    <button type="submit" class="primaire" id="bouton-envoyer-signalement">Envoyer le rapport</button>
+    <p id="message-signalement"></p>
   </form>
 </section>
 
@@ -2309,30 +2310,40 @@ function distanceKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// Filtre les membres par rayon autour de la ville du membre connecté
+// Filtre les membres par rayon autour de la ville du membre connecté.
+// Le calcul se fait côté serveur (fonction membres_autour) : les emails et
+// coordonnées GPS des autres membres ne sont jamais envoyés au navigateur.
 async function appliquerFiltre() {
   const token = localStorage.getItem("outdoor_access_token");
   const rayon = parseInt(document.getElementById("rayon-filtre").value);
+  const container = document.getElementById("liste-profils");
+
+  if (!token) return;
 
   if (!window.monProfilCourant || !window.monProfilCourant.latitude) {
-    alert("Votre ville n'a pas pu être localisée. Modifiez votre profil.");
+    container.innerHTML = "<p>Votre ville n'est pas encore localisée. Allez dans votre profil et appuyez sur « 📍 Mettre à jour ma localisation ».</p>";
     return;
   }
 
-  const mesCoords = { lat: window.monProfilCourant.latitude, lon: window.monProfilCourant.longitude };
+  container.innerHTML = "<p>Recherche en cours...</p>";
 
-  const response = await fetch(
-    SUPABASE_URL + "/rest/v1/Inscription?latitude=not.is.null&user_id=neq." + idUtilisateurCourant,
-    { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token } }
-  );
+  try {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/membres_autour", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ rayon_km: rayon })
+    });
 
-  const profils = await response.json();
-
-  const resultats = profils.filter(function(p) {
-    return distanceKm(mesCoords.lat, mesCoords.lon, p.latitude, p.longitude) <= rayon;
-  });
-
-  afficherResultatsAnnuaire(resultats);
+    if (!response.ok) throw new Error(await response.text());
+    afficherResultatsAnnuaire(await response.json());
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = "<p>Impossible de charger les membres. Réessayez dans un instant.</p>";
+  }
 }
 
 function afficherResultatsAnnuaire(profils) {
@@ -2340,24 +2351,35 @@ function afficherResultatsAnnuaire(profils) {
   container.innerHTML = "";
 
   if (profils.length === 0) {
-    container.innerHTML = "<p>Aucun profil trouvé dans ce rayon.</p>";
+    container.innerHTML = "<p>Aucun profil trouvé dans ce rayon. Essayez un rayon plus grand.</p>";
     return;
   }
 
   profils.forEach(function(p) {
     const carte = document.createElement("article");
     carte.className = "carte";
-    carte.innerHTML =
-      "<h3>" + p.Pseudonyme + "</h3>" +
-      "<p>" + (p["Présentation"] || "") + "</p>" +
-      "<p><strong>Recherche :</strong> " + (p.recherche || "Non précisé") + "</p>" +
-      "<p><strong>Envies :</strong> " + ((p.envies || []).join(", ")) + "</p>" +
-      "<p>" + (p.ville_departement || "") + "</p>" +
-      '<button type="button" class="primaire">Contacter</button>';
 
-    carte.querySelector("button").addEventListener("click", function() {
+    function ajouter(balise, texte) {
+      const el = document.createElement(balise);
+      el.textContent = texte;
+      carte.appendChild(el);
+      return el;
+    }
+
+    ajouter("h3", p.Pseudonyme || "Membre");
+    if (p["Présentation"]) ajouter("p", p["Présentation"]);
+    ajouter("p", "Recherche : " + (p.recherche || "Non précisé"));
+    if (p.envies && p.envies.length) ajouter("p", "Envies : " + p.envies.join(", "));
+    ajouter("p", "📍 " + (p.ville_departement || "") + (p.distance_km != null ? " · à " + p.distance_km + " km" : ""));
+
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "primaire";
+    bouton.textContent = "Contacter";
+    bouton.addEventListener("click", function() {
       ouvrirChat(p.user_id, p.Pseudonyme);
     });
+    carte.appendChild(bouton);
 
     container.appendChild(carte);
   });
@@ -2689,6 +2711,58 @@ window.addEventListener("hashchange", function() {
   if (window.location.hash === "#histoires") chargerHistoires();
 });
 chargerHistoires();
+
+// Formulaire "Signaler un problème" : enregistré dans la table signalements
+document.getElementById("formulaire-signalement").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const token = localStorage.getItem("outdoor_access_token");
+  const retour = document.getElementById("message-signalement");
+
+  if (!token || !idUtilisateurCourant) {
+    retour.textContent = "Connectez-vous pour envoyer un signalement.";
+    return;
+  }
+
+  const motif = document.getElementById("motif").value;
+  const message = document.getElementById("message").value.trim();
+  if (!motif || !message) {
+    retour.textContent = "Choisissez un motif et décrivez le problème.";
+    return;
+  }
+
+  const bouton = document.getElementById("bouton-envoyer-signalement");
+  const formulaire = this;
+
+  await avecChargement(bouton, "Envoi en cours...", async function() {
+    try {
+      const response = await fetch(SUPABASE_URL + "/rest/v1/signalements", {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({
+          user_id: idUtilisateurCourant,
+          motif: motif,
+          message: message
+        })
+      });
+
+      if (!response.ok) {
+        retour.textContent = await lireMessageErreur(response, "Impossible d'envoyer le signalement. Réessayez plus tard.");
+        return;
+      }
+
+      formulaire.reset();
+      retour.textContent = "Merci, votre signalement a bien été envoyé. Il sera traité rapidement.";
+    } catch (error) {
+      console.error(error);
+      retour.textContent = "Impossible d'envoyer le signalement. Réessayez plus tard.";
+    }
+  });
+});
 
 // Retour depuis Stripe après le paiement d'un joker : on recharge
 // l'aventure concernée, on vérifie que le webhook a bien confirmé le
