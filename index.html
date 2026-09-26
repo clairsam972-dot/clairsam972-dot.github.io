@@ -29,6 +29,22 @@
       box-shadow: 0 6px 20px rgba(0,0,0,.3); font-size: .95em;
     }
     .alerte-flottante.info { background: #1f3a2a; }
+    .badge-non-lus {
+      display: inline-block; min-width: 20px; padding: 1px 6px; margin-left: 4px;
+      border-radius: 999px; background: #c0392b; color: #fff;
+      font-size: .8em; font-weight: bold; text-align: center; line-height: 1.5;
+    }
+    .liste-conversations { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+    .conversation {
+      display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+      padding: 14px 16px; border-radius: 12px; cursor: pointer;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: inherit; font: inherit;
+    }
+    .conversation.non-lue { border-color: #c0392b; background: rgba(192,57,43,.12); }
+    .conversation-texte { flex: 1; min-width: 0; }
+    .conversation-texte strong { display: block; }
+    .conversation-apercu { display: block; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conversation-date { font-size: .8em; opacity: .7; white-space: nowrap; }
   </style>
 </head>
 
@@ -55,6 +71,7 @@
     <a href="#espace-membre" class="contour" id="nav-profil" style="display:none;">Mon profil</a>
     <a href="#decouvrir-aventures" class="primaire" id="nav-decouvrir" style="display:none;">Découvrir les aventures</a>
     <a class="contour" id="nav-annuaire" style="display:none;" href="#annuaire-membres">Découvrir les membres</a>
+    <a class="contour" id="nav-messages" style="display:none;" href="#mes-messages">Messages<span id="badge-messages" class="badge-non-lus" style="display:none;"></span></a>
     <a class="contour" id="nav-chat-commun" style="display:none;" href="#chat-commun">Chat commun</a>
     <a href="#creer-aventure" class="contour" id="nav-creer-aventure" style="display:none;">Créer une aventure</a>
     <button class="contour" id="nav-deconnexion" style="display:none;" onclick="deconnexion()">Se déconnecter</button>
@@ -739,6 +756,19 @@
   <a class="contour" href="#espace-membre">Retour à mon profil</a>
 </section>
 
+<section id="mes-messages" class="section">
+  <p class="sourcil">MESSAGERIE</p>
+  <h2>Mes messages</h2>
+  <p>Toutes tes conversations privées avec les autres membres.</p>
+
+  <div id="liste-conversations" class="liste-conversations">
+    <p>Chargement...</p>
+  </div>
+
+  <a class="primaire" href="#annuaire-membres">Trouver des membres</a>
+  <a class="contour" href="#espace-membre">Retour à mon profil</a>
+</section>
+
 <section id="chat-commun" class="section">
   <p class="sourcil">COMMUNAUTÉ</p>
   <h2>Chat commun</h2>
@@ -1058,6 +1088,9 @@ function mettreAJourNavigation(connecte) {
   document.getElementById("nav-decouvrir").style.display = connecte ? "" : "none";
   document.getElementById("nav-annuaire").style.display = connecte ? "" : "none";
   document.getElementById("nav-chat-commun").style.display = connecte ? "" : "none";
+  document.getElementById("nav-messages").style.display = connecte ? "" : "none";
+  document.getElementById("mes-messages").style.display = connecte ? "" : "none";
+  if (!connecte) afficherBadgeMessages(0);
   document.getElementById("chat-commun").style.display = connecte ? "" : "none";
   document.getElementById("nav-creer-aventure").style.display = connecte ? "" : "none";
   document.getElementById("nav-deconnexion").style.display = connecte ? "" : "none";
@@ -1254,6 +1287,7 @@ async function afficherProfil(accessToken, userEmail, userId) {
   await chargerPhotoProfil();
   await chargerGalerie();
   chargerHistoires();
+  mettreAJourBadgeMessages();
 }
 
 // Affiche le statut d'abonnement du membre et le bouton pour s'abonner
@@ -2203,6 +2237,9 @@ window.addEventListener("hashchange", function() {
   if (window.location.hash === "#annuaire-membres") {
     appliquerFiltre();
   }
+  if (window.location.hash === "#mes-messages") {
+    chargerConversations();
+  }
   if (window.location.hash === "#chat-commun") {
     ouvrirChatCommun();
   } else {
@@ -2388,16 +2425,28 @@ function afficherResultatsAnnuaire(profils) {
 // Messagerie en modale
 let destinataireActuelId = null;
 
+let intervalleChatPrive = null;
+
 function ouvrirChat(destinataireId, destinatairePseudo) {
   destinataireActuelId = destinataireId;
   document.getElementById("chat-destinataire-nom").textContent = destinatairePseudo || "Conversation";
+  document.getElementById("chat-messages").innerHTML = "<p>Chargement...</p>";
   document.getElementById("modale-chat").style.display = "flex";
   chargerMessages();
+
+  // Nouveaux messages de la conversation toutes les 5 s tant qu'elle est ouverte
+  clearInterval(intervalleChatPrive);
+  intervalleChatPrive = setInterval(function() {
+    if (!document.hidden) chargerMessages();
+  }, 5000);
 }
 
 function fermerChat() {
   document.getElementById("modale-chat").style.display = "none";
   destinataireActuelId = null;
+  clearInterval(intervalleChatPrive);
+  intervalleChatPrive = null;
+  if (window.location.hash === "#mes-messages") chargerConversations();
 }
 
 async function chargerMessages() {
@@ -2411,9 +2460,16 @@ async function chargerMessages() {
     { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token } }
   );
 
+  if (!response.ok) return;
   const messages = await response.json();
   const container = document.getElementById("chat-messages");
+  const etaitEnBas = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+  const nombreAvant = container.querySelectorAll(".msg-bulle").length;
   container.innerHTML = "";
+
+  if (messages.length === 0) {
+    container.innerHTML = "<p>Aucun message pour l'instant. Écris le premier !</p>";
+  }
 
   messages.forEach(function(m) {
     const bulle = document.createElement("div");
@@ -2422,7 +2478,143 @@ async function chargerMessages() {
     container.appendChild(bulle);
   });
 
-  container.scrollTop = container.scrollHeight;
+  if (etaitEnBas || nombreAvant === 0 || messages.length !== nombreAvant) {
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // Les messages reçus de ce membre sont maintenant lus
+  const nonLus = messages.some(function(m) { return m.receiver_id === idUtilisateurCourant && !m.lu; });
+  if (nonLus) {
+    await fetch(SUPABASE_URL + "/rest/v1/rpc/marquer_lus", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ autre: destinataireActuelId })
+    });
+    mettreAJourBadgeMessages();
+  }
+}
+
+// ===== Boîte de réception =====
+
+function afficherBadgeMessages(nombre) {
+  const badge = document.getElementById("badge-messages");
+  if (!badge) return;
+  if (nombre > 0) {
+    badge.textContent = nombre > 99 ? "99+" : String(nombre);
+    badge.style.display = "";
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+async function mettreAJourBadgeMessages() {
+  const token = localStorage.getItem("outdoor_access_token");
+  if (!token) return;
+  try {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/nb_messages_non_lus", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: "{}"
+    });
+    if (response.ok) afficherBadgeMessages(await response.json());
+  } catch (error) {
+    console.error("Badge messages :", error);
+  }
+}
+
+// Vérifie les nouveaux messages toutes les 30 s (seulement si la page est visible)
+setInterval(function() {
+  if (!document.hidden && localStorage.getItem("outdoor_access_token")) {
+    mettreAJourBadgeMessages();
+    if (window.location.hash === "#mes-messages" && !destinataireActuelId) chargerConversations();
+  }
+}, 30000);
+
+function formaterDateConversation(dateTexte) {
+  const date = new Date(dateTexte);
+  const maintenant = new Date();
+  if (date.toDateString() === maintenant.toDateString()) {
+    return date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  }
+  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+}
+
+async function chargerConversations() {
+  const token = localStorage.getItem("outdoor_access_token");
+  const conteneur = document.getElementById("liste-conversations");
+  if (!token) return;
+
+  try {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/mes_conversations", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: "{}"
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const conversations = await response.json();
+
+    conteneur.innerHTML = "";
+    if (conversations.length === 0) {
+      conteneur.innerHTML = "<p>Aucune conversation pour l'instant. Trouve des membres près de chez toi et appuie sur « Contacter ».</p>";
+      afficherBadgeMessages(0);
+      return;
+    }
+
+    let totalNonLus = 0;
+    conversations.forEach(function(c) {
+      totalNonLus += c.non_lus;
+
+      const ligne = document.createElement("button");
+      ligne.type = "button";
+      ligne.className = "conversation" + (c.non_lus > 0 ? " non-lue" : "");
+
+      const texte = document.createElement("span");
+      texte.className = "conversation-texte";
+      const nom = document.createElement("strong");
+      nom.textContent = c.pseudo;
+      const apercu = document.createElement("span");
+      apercu.className = "conversation-apercu";
+      apercu.textContent = (c.dernier_de_moi ? "Vous : " : "") + c.dernier_message;
+      texte.appendChild(nom);
+      texte.appendChild(apercu);
+
+      const date = document.createElement("span");
+      date.className = "conversation-date";
+      date.textContent = formaterDateConversation(c.date_dernier);
+
+      ligne.appendChild(texte);
+      ligne.appendChild(date);
+
+      if (c.non_lus > 0) {
+        const badge = document.createElement("span");
+        badge.className = "badge-non-lus";
+        badge.textContent = c.non_lus;
+        ligne.appendChild(badge);
+      }
+
+      ligne.addEventListener("click", function() {
+        ouvrirChat(c.autre_id, c.pseudo);
+      });
+      conteneur.appendChild(ligne);
+    });
+
+    afficherBadgeMessages(totalNonLus);
+  } catch (error) {
+    console.error(error);
+    conteneur.innerHTML = "<p>Impossible de charger vos messages. Réessayez dans un instant.</p>";
+  }
 }
 
 const envoyerMessage = unSeulALaFois(async function() {
