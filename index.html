@@ -5,9 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>En Plein Air</title>
   <link rel="stylesheet" href="style.css?v=16">
+  <style>
+    #ecran-chargement {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      background: #0f1a14; color: #f3efe6; font-family: inherit;
+      transition: opacity .3s;
+    }
+    #ecran-chargement.cache { opacity: 0; pointer-events: none; }
+    .rond-chargement {
+      width: 42px; height: 42px; border-radius: 50%;
+      border: 4px solid rgba(255,255,255,.2); border-top-color: #f3efe6;
+      animation: tourner 0.9s linear infinite;
+    }
+    @keyframes tourner { to { transform: rotate(360deg); } }
+    #zone-alertes {
+      position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+      z-index: 10000; display: flex; flex-direction: column; gap: 8px;
+      width: min(92vw, 420px);
+    }
+    .alerte-flottante {
+      background: #3a1f1f; color: #fff; padding: 12px 16px; border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.3); font-size: .95em;
+    }
+    .alerte-flottante.info { background: #1f3a2a; }
+  </style>
 </head>
 
 <body>
+
+<div id="ecran-chargement">
+  <div class="rond-chargement"></div>
+  <p>Chargement...</p>
+</div>
+<div id="zone-alertes" aria-live="polite"></div>
 
 <header class="navigation">
   <div class="marque">EN PLEIN AIR</div>
@@ -801,17 +832,159 @@
 const SUPABASE_URL = "https://slvpdoovurqfykplefxe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_LahEM8Av6dykKdttDABUCg_T-TUMMvt";
 
+// ===== Protection et fiabilité =====
+
+// Petit bandeau de message en bas de l'écran (erreurs, infos)
+function afficherAlerte(message, type) {
+  const zone = document.getElementById("zone-alertes");
+  if (!zone) return;
+  // Évite d'empiler plusieurs fois le même message
+  const existants = Array.from(zone.children).map(function(el) { return el.textContent; });
+  if (existants.includes(message)) return;
+
+  const alerte = document.createElement("div");
+  alerte.className = "alerte-flottante" + (type === "info" ? " info" : "");
+  alerte.textContent = message;
+  zone.appendChild(alerte);
+  setTimeout(function() { alerte.remove(); }, 6000);
+}
+
+// Écran de chargement : masqué une fois la session vérifiée (ou après 10 s au pire)
+function masquerChargement() {
+  const ecran = document.getElementById("ecran-chargement");
+  if (ecran) ecran.classList.add("cache");
+}
+setTimeout(masquerChargement, 10000);
+
+// Message si quelque chose plante dans le code de la page
+window.addEventListener("error", function(e) {
+  console.error("Erreur :", e.error || e.message);
+  afficherAlerte("Oups, un problème est survenu. Si ça persiste, rechargez la page.");
+});
+window.addEventListener("unhandledrejection", function(e) {
+  console.error("Erreur non gérée :", e.reason);
+  afficherAlerte("Oups, un problème est survenu. Si ça persiste, rechargez la page.");
+});
+
+// Connexion internet perdue / retrouvée
+window.addEventListener("offline", function() {
+  afficherAlerte("Connexion internet perdue. Vos actions reprendront quand elle reviendra.");
+});
+window.addEventListener("online", function() {
+  afficherAlerte("Connexion rétablie.", "info");
+});
+
+// Retour arrière depuis Stripe : on recharge pour réactiver proprement les boutons
+window.addEventListener("pageshow", function(e) {
+  if (e.persisted) window.location.reload();
+});
+
+// Toutes les requêtes du site passent par ici :
+// - plafond de 60 requêtes par minute par visiteur
+// - délai maximum (15 s, 2 min pour l'envoi de fichiers) si une API ne répond plus
+// - une nouvelle tentative automatique pour les lectures qui échouent
+const fetchOriginal = window.fetch.bind(window);
+const historiqueRequetes = [];
+const MAX_REQUETES_PAR_MINUTE = 60;
+
+window.fetch = async function(url, options) {
+  options = options || {};
+  const methode = (options.method || "GET").toUpperCase();
+  const estLecture = methode === "GET" || methode === "HEAD";
+  const estFichier = options.body instanceof Blob;
+  const delaiMax = estFichier ? 120000 : 15000;
+
+  const maintenant = Date.now();
+  while (historiqueRequetes.length && maintenant - historiqueRequetes[0] > 60000) {
+    historiqueRequetes.shift();
+  }
+  if (historiqueRequetes.length >= MAX_REQUETES_PAR_MINUTE) {
+    afficherAlerte("Trop d'actions en peu de temps. Patientez quelques secondes.");
+    throw new Error("Limite de requêtes atteinte");
+  }
+  historiqueRequetes.push(maintenant);
+
+  if (!navigator.onLine) {
+    afficherAlerte("Pas de connexion internet.");
+    throw new Error("Hors ligne");
+  }
+
+  const tentativesMax = estLecture ? 2 : 1;
+  for (let tentative = 1; tentative <= tentativesMax; tentative++) {
+    const controleur = new AbortController();
+    const minuteur = setTimeout(function() { controleur.abort(); }, delaiMax);
+    try {
+      const reponse = await fetchOriginal(url, Object.assign({}, options, { signal: controleur.signal }));
+      clearTimeout(minuteur);
+      if (estLecture && reponse.status >= 502 && reponse.status <= 504 && tentative < tentativesMax) {
+        await new Promise(function(r) { setTimeout(r, 1000); });
+        continue;
+      }
+      if (reponse.status === 429) {
+        afficherAlerte("Trop de requêtes. Patientez un instant avant de réessayer.");
+      } else if (reponse.status >= 500) {
+        afficherAlerte("Le serveur rencontre un problème. Réessayez dans un instant.");
+      }
+      return reponse;
+    } catch (erreur) {
+      clearTimeout(minuteur);
+      if (tentative < tentativesMax && erreur.name !== "AbortError") {
+        await new Promise(function(r) { setTimeout(r, 1000); });
+        continue;
+      }
+      if (erreur.name === "AbortError") {
+        afficherAlerte("Le serveur ne répond pas. Réessayez dans un instant.");
+        throw new Error("Délai dépassé");
+      }
+      afficherAlerte("Impossible de joindre le serveur. Vérifiez votre connexion.");
+      throw erreur;
+    }
+  }
+};
+
+// Récupère un message d'erreur lisible depuis une réponse Supabase
+async function lireMessageErreur(reponse, messageParDefaut) {
+  try {
+    const data = await reponse.json();
+    return data.message || data.error || messageParDefaut;
+  } catch (e) {
+    return messageParDefaut;
+  }
+}
+
+// Empêche une fonction d'être lancée deux fois en même temps (double clic, touche Entrée)
+function unSeulALaFois(fonction) {
+  let enCours = false;
+  return async function() {
+    if (enCours) return;
+    enCours = true;
+    try {
+      return await fonction.apply(this, arguments);
+    } finally {
+      enCours = false;
+    }
+  };
+}
+
 // Désactive un bouton avec un texte de chargement pendant une action asynchrone
 async function avecChargement(bouton, texteChargement, action) {
+  if (bouton.dataset.enCours === "1") return;
+  bouton.dataset.enCours = "1";
   const texteOriginal = bouton.textContent;
   bouton.disabled = true;
   bouton.textContent = texteChargement;
   try {
     await action();
   } finally {
+    bouton.dataset.enCours = "";
     bouton.disabled = false;
     bouton.textContent = texteOriginal;
   }
+}
+
+// Une fois redirigé vers Stripe, le bouton reste bloqué (pas de second paiement)
+function attendreRedirection() {
+  return new Promise(function() {});
 }
 
 // Fait apparaître les cartes en douceur lorsqu'elles entrent dans l'écran
@@ -1123,10 +1296,12 @@ document.getElementById("bouton-abonnement").addEventListener("click", async fun
       const data = await response.json();
 
       if (!response.ok || !data.url) {
-        throw new Error(data.error || "Erreur inconnue");
+        alert(data.error || "Impossible de démarrer l'abonnement. Réessayez plus tard.");
+        return;
       }
 
       window.location.href = data.url;
+      await attendreRedirection();
 
     } catch (error) {
       console.error(error);
@@ -1548,6 +1723,7 @@ window.addEventListener("DOMContentLoaded", async function() {
 
       mettreAJourNavigation(true);
       await afficherProfil(token, user.email, user.id);
+      masquerChargement();
       await gererRetourAbonnement();
       if (!window.retourJokerEnCours) {
         window.location.hash = "espace-membre";
@@ -1562,6 +1738,7 @@ window.addEventListener("DOMContentLoaded", async function() {
   } else {
     mettreAJourNavigation(false);
   }
+  masquerChargement();
 });
 
 // Gestion des indices dynamiques
@@ -1885,11 +2062,21 @@ document.getElementById("bouton-joker").addEventListener("click", async function
 
       const data = await response.json();
 
+      if (response.status === 409 && data.deja_paye) {
+        // Joker déjà payé pour cette énigme : on donne la réponse sans refaire payer
+        const reponse = indicesEnCours[indiceActuelIndex].reponse;
+        document.getElementById("reponse-utilisateur").value = reponse;
+        document.getElementById("message-jeu").textContent = "Joker déjà acheté : réponse « " + reponse + " ».";
+        return;
+      }
+
       if (!response.ok || !data.url) {
-        throw new Error(data.error || "Erreur inconnue");
+        alert(data.error || "Impossible de démarrer le paiement du joker. Réessayez plus tard.");
+        return;
       }
 
       window.location.href = data.url;
+      await attendreRedirection();
 
     } catch (error) {
       console.error(error);
@@ -2216,7 +2403,7 @@ async function chargerMessages() {
   container.scrollTop = container.scrollHeight;
 }
 
-async function envoyerMessage() {
+const envoyerMessage = unSeulALaFois(async function() {
   const token = localStorage.getItem("outdoor_access_token");
   const input = document.getElementById("chat-input");
   const contenu = input.value.trim();
@@ -2241,13 +2428,13 @@ async function envoyerMessage() {
   );
 
   if (!response.ok) {
-    console.error(await response.text());
+    alert(await lireMessageErreur(response, "Impossible d'envoyer le message."));
     return;
   }
 
   input.value = "";
   await chargerMessages();
-}
+});
 
 // Chat commun : salon ouvert à tous les abonnés, rafraîchi toutes les 5 s
 // tant que la section est affichée.
@@ -2262,7 +2449,9 @@ function ouvrirChatCommun() {
 
   chargerChatCommun(true);
   if (!intervalleChatCommun) {
-    intervalleChatCommun = setInterval(function() { chargerChatCommun(false); }, 5000);
+    intervalleChatCommun = setInterval(function() {
+      if (!document.hidden) chargerChatCommun(false);
+    }, 5000);
   }
 }
 
@@ -2321,7 +2510,7 @@ async function chargerChatCommun(defilerEnBas) {
   }
 }
 
-async function envoyerMessageCommun() {
+const envoyerMessageCommun = unSeulALaFois(async function() {
   const token = localStorage.getItem("outdoor_access_token");
   const input = document.getElementById("chat-commun-input");
   const contenu = input.value.trim();
@@ -2346,14 +2535,13 @@ async function envoyerMessageCommun() {
   );
 
   if (!response.ok) {
-    console.error(await response.text());
-    alert("Impossible d'envoyer le message.");
+    alert(await lireMessageErreur(response, "Impossible d'envoyer le message."));
     return;
   }
 
   input.value = "";
   await chargerChatCommun(true);
-}
+});
 
 document.getElementById("bouton-envoyer-commun").addEventListener("click", envoyerMessageCommun);
 document.getElementById("chat-commun-input").addEventListener("keydown", function(e) {
@@ -2412,8 +2600,7 @@ document.getElementById("formulaire-histoire").addEventListener("submit", async 
     });
 
     if (!response.ok) {
-      console.error(await response.text());
-      alert("Impossible de publier l'histoire.");
+      alert(await lireMessageErreur(response, "Impossible de publier l'histoire."));
       return;
     }
 
