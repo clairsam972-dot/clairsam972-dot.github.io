@@ -34,6 +34,12 @@
       border-radius: 999px; background: #c0392b; color: #fff;
       font-size: .8em; font-weight: bold; text-align: center; line-height: 1.5;
     }
+    .alerte-flottante.nouveau-message {
+      background: #c0392b; font-weight: bold; cursor: pointer;
+      box-shadow: 0 6px 24px rgba(192,57,43,.5);
+    }
+    .badge-non-lus.pulse { animation: pulser 1s ease-in-out 3; }
+    @keyframes pulser { 50% { transform: scale(1.4); } }
     .liste-conversations { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
     .conversation {
       display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
@@ -107,6 +113,14 @@
   <div class="carte" id="carte-abonnement">
     <p><strong>Abonnement :</strong> <span id="statut-abonnement">Chargement...</span></p>
     <button type="button" class="primaire" id="bouton-abonnement" style="display:none;">S'abonner — 20€/mois</button>
+  </div>
+
+  <div class="carte" id="carte-notifications">
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+      <input type="checkbox" id="case-notif-email" style="width:auto;">
+      <span>📧 Me prévenir par email quand je reçois un message</span>
+    </label>
+    <p id="message-notif-email" style="font-size:.9em;opacity:.8;margin:6px 0 0;"></p>
   </div>
 
   <div class="section-galerie">
@@ -435,16 +449,6 @@
     <label for="motdepasse-couple">Mot de passe</label>
     <input type="password" id="motdepasse-couple" required>
 
-    <label>Vos envies (plusieurs choix possibles)</label>
-    <div class="choix-envies">
-      <label><input type="checkbox" name="envie" value="randonnee"> 🥾 Randonnée</label>
-      <label><input type="checkbox" name="envie" value="camping"> 🏕️ Camping</label>
-      <label><input type="checkbox" name="envie" value="escalade"> 🧗 Escalade</label>
-      <label><input type="checkbox" name="envie" value="kayak"> 🛶 Kayak / eau</label>
-      <label><input type="checkbox" name="envie" value="nuit-etoilee"> 🌌 Nuit à la belle étoile</label>
-      <label><input type="checkbox" name="envie" value="pique-nique"> 🧺 Pique-nique nature</label>
-      <label><input type="checkbox" name="envie" value="aventure-coquine"> 🔥 Aventure coquine en extérieur</label>
-    </div>
 
     <label for="recherche-couple">Ce que vous recherchez</label>
     <select id="recherche-couple" name="recherche">
@@ -494,16 +498,6 @@
     <label for="motdepasse-homme">Mot de passe</label>
     <input type="password" id="motdepasse-homme" required>
 
-    <label>Vos envies (plusieurs choix possibles)</label>
-    <div class="choix-envies">
-      <label><input type="checkbox" name="envie" value="randonnee"> 🥾 Randonnée</label>
-      <label><input type="checkbox" name="envie" value="camping"> 🏕️ Camping</label>
-      <label><input type="checkbox" name="envie" value="escalade"> 🧗 Escalade</label>
-      <label><input type="checkbox" name="envie" value="kayak"> 🛶 Kayak / eau</label>
-      <label><input type="checkbox" name="envie" value="nuit-etoilee"> 🌌 Nuit à la belle étoile</label>
-      <label><input type="checkbox" name="envie" value="pique-nique"> 🧺 Pique-nique nature</label>
-      <label><input type="checkbox" name="envie" value="aventure-coquine"> 🔥 Aventure coquine en extérieur</label>
-    </div>
 
     <label for="recherche-homme">Ce que vous recherchez</label>
     <select id="recherche-homme" name="recherche">
@@ -556,16 +550,6 @@
     <label for="motdepasse-femme">Mot de passe</label>
     <input type="password" id="motdepasse-femme" required>
 
-    <label>Vos envies (plusieurs choix possibles)</label>
-    <div class="choix-envies">
-      <label><input type="checkbox" name="envie" value="randonnee"> 🥾 Randonnée</label>
-      <label><input type="checkbox" name="envie" value="camping"> 🏕️ Camping</label>
-      <label><input type="checkbox" name="envie" value="escalade"> 🧗 Escalade</label>
-      <label><input type="checkbox" name="envie" value="kayak"> 🛶 Kayak / eau</label>
-      <label><input type="checkbox" name="envie" value="nuit-etoilee"> 🌌 Nuit à la belle étoile</label>
-      <label><input type="checkbox" name="envie" value="pique-nique"> 🧺 Pique-nique nature</label>
-      <label><input type="checkbox" name="envie" value="aventure-coquine"> 🔥 Aventure coquine en extérieur</label>
-    </div>
 
     <label for="recherche-femme">Ce que vous recherchez</label>
     <select id="recherche-femme" name="recherche">
@@ -618,16 +602,6 @@
     <label for="motdepasse-trans">Mot de passe</label>
     <input type="password" id="motdepasse-trans" required>
 
-    <label>Vos envies (plusieurs choix possibles)</label>
-    <div class="choix-envies">
-      <label><input type="checkbox" name="envie" value="randonnee"> 🥾 Randonnée</label>
-      <label><input type="checkbox" name="envie" value="camping"> 🏕️ Camping</label>
-      <label><input type="checkbox" name="envie" value="escalade"> 🧗 Escalade</label>
-      <label><input type="checkbox" name="envie" value="kayak"> 🛶 Kayak / eau</label>
-      <label><input type="checkbox" name="envie" value="nuit-etoilee"> 🌌 Nuit à la belle étoile</label>
-      <label><input type="checkbox" name="envie" value="pique-nique"> 🧺 Pique-nique nature</label>
-      <label><input type="checkbox" name="envie" value="aventure-coquine"> 🔥 Aventure coquine en extérieur</label>
-    </div>
 
     <label for="recherche-trans">Ce que vous recherchez</label>
     <select id="recherche-trans" name="recherche">
@@ -1282,6 +1256,8 @@ async function afficherProfil(accessToken, userEmail, userId) {
 
   window.monProfilCourant = profil;
   afficherStatutAbonnement(profil);
+  document.getElementById("case-notif-email").checked = !!profil.notif_email;
+  document.getElementById("message-notif-email").textContent = "";
 
   idUtilisateurCourant = userId;
   await chargerPhotoProfil();
@@ -2311,19 +2287,15 @@ document.getElementById("bouton-localiser-profil").addEventListener("click", asy
     }
 
     const response = await fetch(
-      SUPABASE_URL + "/rest/v1/Inscription?id=eq." + window.monProfilCourant.id,
+      SUPABASE_URL + "/rest/v1/rpc/maj_localisation",
       {
-        method: "PATCH",
+        method: "POST",
         headers: {
           "apikey": SUPABASE_KEY,
           "Authorization": "Bearer " + token,
-          "Content-Type": "application/json",
-          "Prefer": "return=minimal"
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          latitude: coords.lat,
-          longitude: coords.lon
-        })
+        body: JSON.stringify({ lat: coords.lat, lon: coords.lon })
       }
     );
 
@@ -2498,11 +2470,86 @@ async function chargerMessages() {
   }
 }
 
+// ===== Notifications par email (option du profil) =====
+document.getElementById("case-notif-email").addEventListener("change", async function() {
+  const token = localStorage.getItem("outdoor_access_token");
+  const caseACocher = this;
+  const message = document.getElementById("message-notif-email");
+  if (!token) return;
+
+  caseACocher.disabled = true;
+  try {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/maj_notif_email", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ actif: caseACocher.checked })
+    });
+    if (!response.ok) throw new Error(await response.text());
+    if (window.monProfilCourant) window.monProfilCourant.notif_email = caseACocher.checked;
+    message.textContent = caseACocher.checked
+      ? "Activé : vous recevrez un email (au plus toutes les 30 min) quand un membre vous écrit."
+      : "Désactivé : vous ne recevrez plus d'email.";
+  } catch (error) {
+    console.error(error);
+    caseACocher.checked = !caseACocher.checked;
+    message.textContent = "Impossible d'enregistrer ce choix. Réessayez.";
+  } finally {
+    caseACocher.disabled = false;
+  }
+});
+
 // ===== Boîte de réception =====
+
+let dernierNombreNonLus = null;
+
+// Bandeau rouge quand un nouveau message arrive
+function notifierNouveauMessage(nombre, premierChargement) {
+  const zone = document.getElementById("zone-alertes");
+  if (!zone) return;
+  zone.querySelectorAll(".nouveau-message").forEach(function(el) { el.remove(); });
+
+  const alerte = document.createElement("div");
+  alerte.className = "alerte-flottante nouveau-message";
+  alerte.textContent = premierChargement
+    ? "📩 Vous avez " + nombre + " message" + (nombre > 1 ? "s" : "") + " non lu" + (nombre > 1 ? "s" : "") + ". Appuyez pour lire."
+    : "📩 Nouveau message ! Appuyez pour le lire.";
+  alerte.addEventListener("click", function() {
+    alerte.remove();
+    window.location.hash = "mes-messages";
+  });
+  zone.appendChild(alerte);
+  setTimeout(function() { alerte.remove(); }, 10000);
+
+  if ("vibrate" in navigator) {
+    try { navigator.vibrate(200); } catch (e) {}
+  }
+}
 
 function afficherBadgeMessages(nombre) {
   const badge = document.getElementById("badge-messages");
   if (!badge) return;
+
+  // Nouveau message arrivé depuis la dernière vérification ?
+  const conversationOuverte = document.getElementById("modale-chat").style.display === "flex";
+  if (nombre > 0 && !conversationOuverte) {
+    if (dernierNombreNonLus === null) {
+      notifierNouveauMessage(nombre, true);
+    } else if (nombre > dernierNombreNonLus) {
+      notifierNouveauMessage(nombre, false);
+      badge.classList.remove("pulse");
+      void badge.offsetWidth;
+      badge.classList.add("pulse");
+    }
+  }
+  dernierNombreNonLus = localStorage.getItem("outdoor_access_token") ? nombre : null;
+
+  // Nombre de non lus dans l'onglet du navigateur
+  document.title = (nombre > 0 ? "(" + nombre + ") " : "") + "En Plein Air";
+
   if (nombre > 0) {
     badge.textContent = nombre > 99 ? "99+" : String(nombre);
     badge.style.display = "";
@@ -2530,13 +2577,13 @@ async function mettreAJourBadgeMessages() {
   }
 }
 
-// Vérifie les nouveaux messages toutes les 30 s (seulement si la page est visible)
+// Vérifie les nouveaux messages toutes les 20 s (seulement si la page est visible)
 setInterval(function() {
   if (!document.hidden && localStorage.getItem("outdoor_access_token")) {
     mettreAJourBadgeMessages();
     if (window.location.hash === "#mes-messages" && !destinataireActuelId) chargerConversations();
   }
-}, 30000);
+}, 20000);
 
 function formaterDateConversation(dateTexte) {
   const date = new Date(dateTexte);
