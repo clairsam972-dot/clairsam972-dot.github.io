@@ -79,6 +79,8 @@
     body.portail .navigation nav,
     body.portail .hero .actes { display: none !important; }
     body.portail .hero { min-height: 100vh; }
+    /* Une fois entré (ou connecté), la page d'accueil n'est plus affichée */
+    body:not(.portail) .hero { display: none !important; }
     @media (max-width: 700px) {
       .hero .copie-hero { padding-top: 0; }
       .hero { gap: 24px; }
@@ -100,6 +102,27 @@
     }
     section.page-seule { display: none; }
     body.plein-ecran section.page-seule.vue-plein-ecran { display: block; }
+    .actes-carte { display: flex; gap: 10px; flex-wrap: wrap; }
+    .filtres-aventures { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+    .filtres-aventures button { padding: 8px 12px; font-size: 14px; }
+    .filtres-aventures button.actif { background: #ff4fd8; color: #0b0710; border-color: #ff4fd8; }
+    .badge-categorie { display: inline-block; font-size: .8em; padding: 2px 10px; border-radius: 999px; border: 1px solid #3d2448; margin-bottom: 6px; }
+    /* Fenêtre de discussion aux couleurs du site (texte lisible) */
+    .modale-overlay { z-index: 9990; }
+    .modale-contenu { background: #140d1b; color: #f5f2f7; border: 1px solid #3d2448; }
+    .modale-header { border-bottom-color: #3d2448; gap: 10px; flex-wrap: wrap; }
+    .modale-header h3 { margin: 0; font-size: 1.1em; color: #ff4fd8; }
+    .actions-chat { display: flex; gap: 6px; align-items: center; }
+    .actions-chat button { padding: 6px 10px; font-size: 13px; color: #f5f2f7; }
+    .actions-chat button:not(.contour) { background: rgba(255,255,255,.12); border-radius: 50%; width: 32px; height: 32px; padding: 0; }
+    .chat-input-zone { border-top-color: #3d2448; }
+    .chat-input-zone input { background: #0b0710; color: #f5f2f7; border-color: #3d2448; }
+    .chat-messages > p { opacity: .7; }
+    .carte-rdv { border: 1px solid #3d2448; border-radius: 14px; padding: 16px; margin-bottom: 14px; background: rgba(20, 13, 27, .7); }
+    .carte-rdv h3 { margin: 0 0 6px; }
+    .carte-rdv .meta { font-size: .9em; opacity: .85; margin: 0 0 8px; }
+    .carte-rdv .desc { white-space: pre-wrap; margin: 0 0 10px; }
+    .carte-rdv .actions-rdv { display: flex; gap: 8px; flex-wrap: wrap; }
     .lien-parametres { display: inline-block; margin: 4px 0 16px; }
     .zone-discrete { margin-top: 2.5em; padding-top: 1em; border-top: 1px solid rgba(255,255,255,.12); }
     .zone-discrete summary { cursor: pointer; font-size: .85em; opacity: .6; list-style: none; }
@@ -378,8 +401,8 @@
   <p class="sourcil">RENDEZ-VOUS</p>
   <h2>Des expériences en plein air</h2>
   <p>
-    Explorez de nouvelles expériences et découvrez des endroits
-    spécialement sélectionnés pour les amateurs de plein air.
+    Proposez un moment, rejoignez celui d'un autre membre :
+    les rendez-vous se donnent ici, les détails se règlent en privé.
   </p>
 
   <div class="cartes">
@@ -388,18 +411,44 @@
     <article class="carte">
       <div class="icone">🧭</div>
       <h3>Rendez-vous</h3>
-      <p>Trouvez des expériences et des rencontres près de chez vous.</p>
-      <a class="contour" href="#inscription">Explorer</a>
+      <p>Trouvez des expériences et des rencontres près de chez vous, ou proposez la vôtre.</p>
+      <div class="actes-carte">
+        <button type="button" class="primaire" onclick="allerRendezVous(true)">+ Créer un RDV</button>
+        <button type="button" class="contour" onclick="allerRendezVous(false)">Voir les RDV</button>
+      </div>
     </article>
 
-    <article class="carte">
-      <div class="icone">🌲</div>
-      <h3>Nature</h3>
-      <p>Profitez de la nature dans un cadre respectueux et sécurisé.</p>
-      <a class="contour" href="#aventure-nature">Voir les lieux</a>
-    </article>
 
   </div>
+</section>
+
+<section id="rendez-vous" class="section compacte page-seule">
+  <p><a class="contour" href="#experiences">← Retour</a></p>
+  <p class="sourcil">RENDEZ-VOUS</p>
+  <h2>Les rendez-vous des membres</h2>
+  <p>Proposez un moment, un lieu, une envie… et laissez les membres intéressés vous écrire. Restez vague sur le lieu exact : vous donnerez les détails en privé, par la messagerie, à qui vous voulez.</p>
+
+  <button type="button" class="primaire" id="bouton-ouvrir-rdv">+ Créer un RDV</button>
+
+  <form id="formulaire-rdv" class="carte" style="display:none;margin-top:16px;">
+    <label for="rdv-titre">Titre</label>
+    <input type="text" id="rdv-titre" maxlength="100" required placeholder="Ex. : Balade coquine en sous-bois">
+
+    <label for="rdv-date">Date et heure</label>
+    <input type="datetime-local" id="rdv-date" required>
+
+    <label for="rdv-lieu">Secteur (ville ou département, pas d'adresse exacte)</label>
+    <input type="text" id="rdv-lieu" maxlength="120" required placeholder="Ex. : Forêt de Fontainebleau (77)">
+
+    <label for="rdv-description">Description et instructions</label>
+    <textarea id="rdv-description" rows="4" maxlength="1000" placeholder="Qui vous cherchez, ce que vous proposez, vos règles du jeu…"></textarea>
+
+    <button type="submit" class="primaire" id="bouton-publier-rdv">Publier le RDV</button>
+    <button type="button" class="contour" id="bouton-annuler-rdv">Annuler</button>
+    <p id="message-rdv"></p>
+  </form>
+
+  <div id="liste-rdv" style="margin-top:20px;"><p>Chargement…</p></div>
 </section>
 
 <section id="chasse" class="section sombre">
@@ -425,7 +474,7 @@
         <span>📍 Île-de-France</span>
         <span>👥 2 à 6 personnes</span>
         <span>⏱️ 2 à 4 h</span>
-        <span>🔑 Accès via abonnement</span>
+        <span>✏️ Création gratuite</span>
       </div>
       <a class="primaire" href="#aventure-nature">Voir l'aventure</a>
     </article>
@@ -441,7 +490,7 @@
         <span>📍 Île-de-France</span>
         <span>👥 2 à 8 personnes</span>
         <span>⏱️ Une soirée</span>
-        <span>🔑 Accès via abonnement</span>
+        <span>✏️ Création gratuite</span>
       </div>
       <a class="primaire" href="#aventure-nuit">Voir l'aventure</a>
     </article>
@@ -457,7 +506,7 @@
         <span>📍 Lieu secret</span>
         <span>👥 2 à 10 personnes</span>
         <span>⏱️ 3 à 5 h</span>
-        <span>🔑 Accès via abonnement</span>
+        <span>✏️ Création gratuite</span>
       </div>
       <a class="primaire" href="#aventure-defi">Voir l'aventure</a>
     </article>
@@ -501,12 +550,12 @@
     <span>📍 Île-de-France</span>
     <span>👥 2 à 6 personnes</span>
     <span>⏱️ 2 à 4 h</span>
-    <span>🔑 Accès via abonnement</span>
+    <span>✏️ Création gratuite</span>
   </div>
 
   <div class="actes">
-    <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
-    <a class="contour" href="#chasse">Retour</a>
+    <button type="button" class="primaire" onclick="creerAventureCategorie('nature')">✏️ Créer l'aventure</button>
+    <button type="button" class="contour" onclick="participerAventureCategorie('nature')">🔍 Participer à une aventure</button>
   </div>
 </section>
 
@@ -524,12 +573,12 @@
     <span>📍 Île-de-France</span>
     <span>👥 2 à 8 personnes</span>
     <span>⏱️ Une soirée</span>
-    <span>🔑 Accès via abonnement</span>
+    <span>✏️ Création gratuite</span>
   </div>
 
   <div class="actes">
-    <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
-    <a class="contour" href="#chasse">Retour</a>
+    <button type="button" class="primaire" onclick="creerAventureCategorie('nuit')">✏️ Créer l'aventure</button>
+    <button type="button" class="contour" onclick="participerAventureCategorie('nuit')">🔍 Participer à une aventure</button>
   </div>
 </section>
 
@@ -547,12 +596,12 @@
     <span>📍 Lieu secret</span>
     <span>👥 2 à 10 personnes</span>
     <span>⏱️ 3 à 5 h</span>
-    <span>🔑 Accès via abonnement</span>
+    <span>✏️ Création gratuite</span>
   </div>
 
   <div class="actes">
-    <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
-    <a class="contour" href="#chasse">Retour</a>
+    <button type="button" class="primaire" onclick="creerAventureCategorie('defi')">✏️ Créer l'aventure</button>
+    <button type="button" class="contour" onclick="participerAventureCategorie('defi')">🔍 Participer à une aventure</button>
   </div>
 </section>
 
@@ -920,7 +969,12 @@
 <section id="decouvrir-aventures" class="section">
   <p class="sourcil">LA CHASSE</p>
   <h2>Aventures à découvrir</h2>
-
+  <div class="filtres-aventures" id="filtres-aventures">
+    <button type="button" class="contour actif" data-categorie="">Toutes</button>
+    <button type="button" class="contour" data-categorie="nature">🌲 Évasion nature</button>
+    <button type="button" class="contour" data-categorie="nuit">🌙 Nuit sauvage</button>
+    <button type="button" class="contour" data-categorie="defi">🧩 Défi mystère</button>
+  </div>
   <div id="liste-aventures"></div>
 
   <a class="contour" href="#espace-membre">Retour à mon profil</a>
@@ -954,6 +1008,14 @@
   <h2>Créer une aventure</h2>
 
   <form id="formulaire-aventure">
+    <label for="categorie-aventure">Type d'aventure</label>
+    <select id="categorie-aventure" required>
+      <option value="">-- Choisissez --</option>
+      <option value="nature">🌲 Évasion nature</option>
+      <option value="nuit">🌙 Nuit sauvage</option>
+      <option value="defi">🧩 Défi mystère</option>
+    </select>
+
     <label for="titre-aventure">Titre de l'aventure</label>
     <input type="text" id="titre-aventure" required>
 
@@ -1291,8 +1353,7 @@ function afficherAlerte(message, type) {
   }
   document.getElementById("bouton-accueil-entrer").addEventListener("click", function() {
     entrer();
-    const suite = document.getElementById("experiences");
-    if (suite) suite.scrollIntoView({ behavior: "smooth" });
+    window.scrollTo(0, 0);
   });
   document.getElementById("lien-accueil-connexion").addEventListener("click", function(e) {
     e.preventDefault();
@@ -1471,7 +1532,8 @@ const groupesPleinEcran = [
   ["chasse", "aventure-nature", "aventure-nuit", "aventure-defi"],
   ["decouvrir-aventures", "jouer-aventure"],
   ["mentions-legales", "cgu", "confidentialite"],
-  ["parametres"]
+  ["parametres"],
+  ["rendez-vous"]
 ];
 
 // Envoie vers le formulaire de création si connecté, sinon vers l'inscription.
@@ -1488,7 +1550,7 @@ function trouverGroupePleinEcran(id) {
 
 function appliquerVuePleinEcran() {
   const id = window.location.hash.replace("#", "");
-  if (id === "parametres" && !localStorage.getItem("outdoor_access_token")) {
+  if ((id === "parametres" || id === "rendez-vous") && !localStorage.getItem("outdoor_access_token")) {
     window.location.hash = "connexion";
     return;
   }
@@ -2659,7 +2721,8 @@ formulaireAventure.addEventListener("submit", async function(e) {
             user_id: user.id,
             createur_pseudo: pseudo,
             titre: titre,
-            description: description
+            description: description,
+            categorie: document.getElementById("categorie-aventure").value || null
           })
         }
       );
@@ -2722,6 +2785,39 @@ let aventureEnCours = null;
 let indicesEnCours = [];
 let indiceActuelIndex = 0;
 
+const NOMS_CATEGORIES = { nature: "🌲 Évasion nature", nuit: "🌙 Nuit sauvage", defi: "🧩 Défi mystère" };
+function echapperTexte(t) {
+  return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Boutons des pages Évasion nature / Nuit sauvage / Défi mystère
+function creerAventureCategorie(categorie) {
+  if (!localStorage.getItem("outdoor_access_token")) {
+    alert("Inscrivez-vous gratuitement pour créer votre aventure.");
+    window.location.hash = "inscription";
+    return;
+  }
+  window.location.hash = "creer-aventure";
+  document.getElementById("categorie-aventure").value = categorie;
+  setTimeout(function() { document.getElementById("titre-aventure").focus(); }, 300);
+}
+function participerAventureCategorie(categorie) {
+  if (!localStorage.getItem("outdoor_access_token")) {
+    alert("Inscrivez-vous gratuitement pour participer aux aventures.");
+    window.location.hash = "inscription";
+    return;
+  }
+  window.filtreCategorieAventure = categorie;
+  if (window.location.hash === "#decouvrir-aventures") chargerListeAventures();
+  else window.location.hash = "decouvrir-aventures";
+}
+document.querySelectorAll("#filtres-aventures button").forEach(function(b) {
+  b.addEventListener("click", function() {
+    window.filtreCategorieAventure = b.dataset.categorie;
+    chargerListeAventures();
+  });
+});
+
 // Affiche la liste des aventures disponibles
 async function chargerListeAventures() {
   const token = localStorage.getItem("outdoor_access_token");
@@ -2737,8 +2833,12 @@ async function chargerListeAventures() {
   conteneur.innerHTML = '<p class="chargement">Chargement des aventures...</p>';
 
   try {
+    const filtre = window.filtreCategorieAventure || "";
+    document.querySelectorAll("#filtres-aventures button").forEach(function(b) {
+      b.classList.toggle("actif", b.dataset.categorie === filtre);
+    });
     const response = await fetch(
-      SUPABASE_URL + "/rest/v1/Aventures?select=*&order=created_at.desc",
+      SUPABASE_URL + "/rest/v1/Aventures?select=*&order=created_at.desc" + (filtre ? "&categorie=eq." + filtre : ""),
       {
         headers: {
           "apikey": SUPABASE_KEY,
@@ -2750,7 +2850,9 @@ async function chargerListeAventures() {
     const aventures = await response.json();
 
     if (aventures.length === 0) {
-      conteneur.innerHTML = "<p>Aucune aventure disponible pour le moment.</p>";
+      conteneur.innerHTML = filtre
+        ? "<p>Aucune aventure de ce type pour l'instant. <a href=\"#\" onclick=\"creerAventureCategorie('" + filtre + "');return false;\">Créez la première !</a></p>"
+        : "<p>Aucune aventure disponible pour le moment.</p>";
       return;
     }
 
@@ -2760,9 +2862,10 @@ async function chargerListeAventures() {
       const carte = document.createElement("article");
       carte.className = "carte-chasse";
       carte.innerHTML =
-        "<h3>" + aventure.titre + "</h3>" +
-        "<p>" + (aventure.description || "") + "</p>" +
-        "<p><em>Créée par " + (aventure.createur_pseudo || "un membre") + "</em></p>" +
+        (NOMS_CATEGORIES[aventure.categorie] ? '<span class="badge-categorie">' + NOMS_CATEGORIES[aventure.categorie] + "</span>" : "") +
+        "<h3>" + echapperTexte(aventure.titre) + "</h3>" +
+        "<p>" + echapperTexte(aventure.description || "") + "</p>" +
+        "<p><em>Créée par " + echapperTexte(aventure.createur_pseudo || "un membre") + "</em></p>" +
         '<button type="button" class="primaire bouton-jouer" data-id="' + aventure.id + '">Commencer l\'aventure</button>';
 
       conteneur.appendChild(carte);
@@ -4393,6 +4496,139 @@ document.getElementById("bouton-supprimer-compte").addEventListener("click", asy
   });
 });
 
+
+// ---------- Rendez-vous proposés par les membres ----------
+function allerRendezVous(creer) {
+  if (!localStorage.getItem("outdoor_access_token")) {
+    alert("Connectez-vous ou inscrivez-vous gratuitement pour voir et proposer des rendez-vous.");
+    window.location.hash = "inscription";
+    return;
+  }
+  window.location.hash = "rendez-vous";
+  if (creer) ouvrirFormulaireRdv();
+}
+
+function ouvrirFormulaireRdv() {
+  const form = document.getElementById("formulaire-rdv");
+  form.style.display = "";
+  const champDate = document.getElementById("rdv-date");
+  const maintenant = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+  champDate.min = maintenant.toISOString().slice(0, 16);
+  champDate.max = new Date(maintenant.getTime() + 89 * 86400000).toISOString().slice(0, 16);
+  document.getElementById("rdv-titre").focus();
+}
+document.getElementById("bouton-ouvrir-rdv").addEventListener("click", ouvrirFormulaireRdv);
+document.getElementById("bouton-annuler-rdv").addEventListener("click", function() {
+  document.getElementById("formulaire-rdv").reset();
+  document.getElementById("formulaire-rdv").style.display = "none";
+  document.getElementById("message-rdv").textContent = "";
+});
+
+function formaterDateRdv(iso) {
+  return new Date(iso).toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+}
+
+async function chargerRendezVous() {
+  const liste = document.getElementById("liste-rdv");
+  if (!localStorage.getItem("outdoor_access_token")) return;
+  liste.innerHTML = "<p>Chargement…</p>";
+  try {
+    const depuis = new Date(Date.now() - 2 * 3600000).toISOString();
+    const response = await fetch(
+      SUPABASE_URL + "/rest/v1/rendez_vous?select=id,user_id,pseudo,titre,date_rdv,lieu,description&date_rdv=gte." +
+      encodeURIComponent(depuis) + "&order=date_rdv.asc&limit=100",
+      { headers: enTetesMembre() }
+    );
+    if (!response.ok) throw new Error(await response.text());
+    const rdvs = await response.json();
+    liste.innerHTML = "";
+    if (rdvs.length === 0) {
+      liste.innerHTML = "<p>Aucun rendez-vous prévu pour l'instant. Lancez-vous, proposez le premier ! 🔥</p>";
+      return;
+    }
+    rdvs.forEach(function(rdv) {
+      const carte = document.createElement("div");
+      carte.className = "carte-rdv";
+      const titre = document.createElement("h3"); titre.textContent = rdv.titre;
+      const meta = document.createElement("p"); meta.className = "meta";
+      meta.textContent = "📅 " + formaterDateRdv(rdv.date_rdv) + "  ·  📍 " + rdv.lieu + "  ·  👤 " + (rdv.pseudo || "Membre");
+      const desc = document.createElement("p"); desc.className = "desc"; desc.textContent = rdv.description || "";
+      const actions = document.createElement("div"); actions.className = "actions-rdv";
+      const estMoi = rdv.user_id === idUtilisateurCourant;
+      if (!estMoi) {
+        const ecrire = document.createElement("button");
+        ecrire.type = "button"; ecrire.className = "primaire";
+        ecrire.textContent = "💬 Écrire à " + (rdv.pseudo || "ce membre");
+        ecrire.addEventListener("click", function() { ouvrirChat(rdv.user_id, rdv.pseudo || "Membre"); });
+        const signaler = document.createElement("button");
+        signaler.type = "button"; signaler.className = "contour";
+        signaler.textContent = "🚩 Signaler";
+        signaler.addEventListener("click", function() { signalerMembre(rdv.user_id, rdv.pseudo || "Membre"); });
+        actions.append(ecrire, signaler);
+      }
+      if (estMoi || idUtilisateurCourant === ADMIN_USER_ID) {
+        const suppr = document.createElement("button");
+        suppr.type = "button"; suppr.className = "contour";
+        suppr.textContent = estMoi ? "Supprimer mon RDV" : "Supprimer (modération)";
+        suppr.addEventListener("click", function() { supprimerRendezVous(rdv.id); });
+        actions.append(suppr);
+      }
+      carte.append(titre, meta);
+      if (rdv.description) carte.append(desc);
+      carte.append(actions);
+      liste.append(carte);
+    });
+  } catch (error) {
+    console.error(error);
+    liste.innerHTML = "<p>Impossible de charger les rendez-vous. Réessayez plus tard.</p>";
+  }
+}
+
+async function supprimerRendezVous(id) {
+  if (!confirm("Supprimer ce rendez-vous ?")) return;
+  const response = await fetch(SUPABASE_URL + "/rest/v1/rendez_vous?id=eq." + id, { method: "DELETE", headers: enTetesMembre() });
+  if (!response.ok) { alert("Suppression impossible. Réessayez."); return; }
+  chargerRendezVous();
+}
+
+document.getElementById("formulaire-rdv").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const message = document.getElementById("message-rdv");
+  const bouton = document.getElementById("bouton-publier-rdv");
+  const dateLocale = document.getElementById("rdv-date").value;
+  const date = new Date(dateLocale);
+  if (isNaN(date) || date < new Date()) { message.textContent = "Choisissez une date à venir."; return; }
+  await avecChargement(bouton, "Publication…", async function() {
+    try {
+      const response = await fetch(SUPABASE_URL + "/rest/v1/rendez_vous", {
+        method: "POST",
+        headers: Object.assign(enTetesMembre(), { "Prefer": "return=minimal" }),
+        body: JSON.stringify({
+          titre: document.getElementById("rdv-titre").value.trim(),
+          date_rdv: date.toISOString(),
+          lieu: document.getElementById("rdv-lieu").value.trim(),
+          description: document.getElementById("rdv-description").value.trim() || null
+        })
+      });
+      if (!response.ok) {
+        const erreur = await response.json().catch(function() { return {}; });
+        throw new Error(erreur.message || "Publication impossible.");
+      }
+      document.getElementById("formulaire-rdv").reset();
+      document.getElementById("formulaire-rdv").style.display = "none";
+      message.textContent = "";
+      afficherAlerte("Rendez-vous publié ✅", "info");
+      chargerRendezVous();
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  });
+});
+
+window.addEventListener("hashchange", function() {
+  if (window.location.hash === "#rendez-vous") chargerRendezVous();
+});
+if (window.location.hash === "#rendez-vous") setTimeout(chargerRendezVous, 1500);
 </script>
 </body>
 </html>
