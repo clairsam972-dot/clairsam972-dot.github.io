@@ -60,7 +60,18 @@
     .moderation-membre h3 { margin-top: 0; }
     .moderation-membre .media-galerie img,
     .moderation-membre .media-galerie video { max-width: 160px; }
-    #nouveau-mot-de-passe { display: none; }
+    #nouveau-mot-de-passe, #verification-age { display: none; }
+    #verification-age.actif {
+      position: fixed; inset: 0; z-index: 9997; overflow-y: auto;
+      background: #0f1a14; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px;
+    }
+    section.page-seule { display: none; }
+    body.plein-ecran section.page-seule.vue-plein-ecran { display: block; }
+    .lien-parametres { display: inline-block; margin: 4px 0 16px; }
+    .zone-discrete { margin-top: 2.5em; padding-top: 1em; border-top: 1px solid rgba(255,255,255,.12); }
+    .zone-discrete summary { cursor: pointer; font-size: .85em; opacity: .6; list-style: none; }
+    .zone-discrete summary::-webkit-details-marker { display: none; }
+    .zone-discrete[open] summary { opacity: .9; margin-bottom: 10px; }
     #nouveau-mot-de-passe.actif {
       position: fixed; inset: 0; z-index: 9998; overflow-y: auto;
       background: #0f1a14; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px;
@@ -82,6 +93,7 @@
       width: 40px; height: 40px; font-size: 1.1em; cursor: pointer;
     }
     .avatar-annuaire, .media-galerie img { cursor: zoom-in; }
+    .aide-champ { font-size: .85em; opacity: .75; margin: 4px 0 12px; }
     .a-completer { background: #f1c40f; color: #111; padding: 0 4px; border-radius: 3px; }
     section.page-legale { display: none; }
     body.plein-ecran section.page-legale.vue-plein-ecran { display: block; }
@@ -158,10 +170,12 @@
 
   <div class="carte" id="carte-abonnement">
     <p><strong>Abonnement :</strong> <span id="statut-abonnement">Chargement...</span></p>
-    <button type="button" class="primaire" id="bouton-abonnement" style="display:none;">S'abonner — 20€/mois</button>
+    <button type="button" class="primaire" id="bouton-abonnement" style="display:none;">S'abonner — 14,90 €/mois</button>
     <button type="button" class="contour" id="bouton-gerer-abonnement" style="display:none;">Gérer / résilier mon abonnement</button>
     <p id="message-gerer-abonnement" style="font-size:.9em;opacity:.8;margin:6px 0 0;"></p>
   </div>
+
+  <a class="contour lien-parametres" href="#parametres">⚙️ Paramètres du compte</a>
 
   <div class="carte" id="carte-modifier-profil">
     <p><strong>Mon profil</strong></p>
@@ -191,27 +205,7 @@
     </form>
   </div>
 
-  <div class="carte" id="carte-mot-de-passe">
-    <p><strong>Mot de passe</strong></p>
-    <button type="button" class="contour" id="bouton-ouvrir-mdp">🔒 Changer mon mot de passe</button>
-    <form id="formulaire-changer-mdp" style="display:none;margin-top:12px;">
-      <label for="changer-mdp-1">Nouveau mot de passe</label>
-      <input type="password" id="changer-mdp-1" minlength="6" required>
-      <label for="changer-mdp-2">Confirmez le nouveau mot de passe</label>
-      <input type="password" id="changer-mdp-2" minlength="6" required>
-      <button type="submit" class="primaire" id="bouton-changer-mdp">Enregistrer</button>
-      <button type="button" class="contour" id="bouton-annuler-mdp">Annuler</button>
-      <p id="message-changer-mdp"></p>
-    </form>
-  </div>
 
-  <div class="carte" id="carte-notifications">
-    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-      <input type="checkbox" id="case-notif-email" style="width:auto;">
-      <span>📧 Me prévenir par email quand je reçois un message</span>
-    </label>
-    <p id="message-notif-email" style="font-size:.9em;opacity:.8;margin:6px 0 0;"></p>
-  </div>
 
   <div class="section-galerie">
     <h3>Album public</h3>
@@ -235,18 +229,7 @@
     <div id="galerie-medias-prive"></div>
   </div>
 
-  <div class="carte" id="carte-blocages">
-    <p><strong>Membres bloqués</strong></p>
-    <p style="font-size:.9em;opacity:.8;">Un membre bloqué ne peut plus vous écrire et ne vous voit plus dans l'annuaire (et inversement).</p>
-    <div id="liste-blocages"><p>Aucun membre bloqué.</p></div>
-  </div>
 
-  <div class="carte zone-danger" id="carte-supprimer-compte">
-    <p><strong>Supprimer mon compte</strong></p>
-    <p style="font-size:.9em;opacity:.8;">Supprime définitivement votre profil, vos photos, vos messages, vos histoires et vos aventures, et arrête votre abonnement. Cette action est irréversible.</p>
-    <button type="button" class="contour" id="bouton-supprimer-compte">Supprimer mon compte</button>
-    <p id="message-supprimer-compte"></p>
-  </div>
 
   <a class="primaire" href="#decouvrir-aventures">Découvrir les aventures</a>
   <a class="primaire" href="#annuaire-membres">Découvrir les membres</a>
@@ -257,6 +240,51 @@
     Se déconnecter
   </button>
 </section>
+
+<section id="parametres" class="section compacte page-seule">
+  <p class="sourcil">MON COMPTE</p>
+  <h2>Paramètres du compte</h2>
+
+  <div class="carte" id="carte-mot-de-passe">
+    <p><strong>Mot de passe</strong></p>
+    <button type="button" class="contour" id="bouton-ouvrir-mdp">🔒 Changer mon mot de passe</button>
+    <form id="formulaire-changer-mdp" style="display:none;margin-top:12px;">
+      <label for="changer-mdp-1">Nouveau mot de passe</label>
+      <input type="password" id="changer-mdp-1" minlength="6" required>
+      <label for="changer-mdp-2">Confirmez le nouveau mot de passe</label>
+      <input type="password" id="changer-mdp-2" minlength="6" required>
+      <button type="submit" class="primaire" id="bouton-changer-mdp">Enregistrer</button>
+      <button type="button" class="contour" id="bouton-annuler-mdp">Annuler</button>
+      <p id="message-changer-mdp"></p>
+    </form>
+  </div>
+
+  <div class="carte" id="carte-notifications">
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+      <input type="checkbox" id="case-notif-email" style="width:auto;">
+      <span>📧 Me prévenir par email quand je reçois un message</span>
+    </label>
+    <p id="message-notif-email" style="font-size:.9em;opacity:.8;margin:6px 0 0;"></p>
+  </div>
+
+  <div class="carte" id="carte-blocages">
+    <p><strong>Membres bloqués</strong></p>
+    <p style="font-size:.9em;opacity:.8;">Un membre bloqué ne peut plus vous écrire et ne vous voit plus dans l'annuaire (et inversement).</p>
+    <div id="liste-blocages"><p>Aucun membre bloqué.</p></div>
+  </div>
+
+  <details class="zone-discrete" id="carte-supprimer-compte">
+    <summary>Supprimer mon compte</summary>
+    <div class="carte zone-danger">
+      <p style="font-size:.9em;opacity:.8;">Supprime définitivement votre profil, vos photos, vos messages, vos histoires et vos aventures, et arrête votre abonnement. Cette action est irréversible.</p>
+      <button type="button" class="contour" id="bouton-supprimer-compte">Supprimer définitivement mon compte</button>
+      <p id="message-supprimer-compte"></p>
+    </div>
+  </details>
+
+  <p style="margin-top:2em;"><a class="contour" href="#espace-membre">← Retour à mon profil</a></p>
+</section>
+
 
 <section class="hero">
   <div class="copie-hero">
@@ -388,7 +416,7 @@
     <h3>Comment ça marche côté tarifs ?</h3>
     <p>✅ Inscription gratuite pour tout le monde.</p>
     <p>✅ Créer et proposer une aventure : gratuit.</p>
-    <p>🔑 Accès à toutes les aventures : abonnement 20€/mois.</p>
+    <p>🔑 Accès à toutes les aventures : gratuit pour les femmes et les couples, 14,90 €/mois pour les hommes et les personnes trans.</p>
     <p>🃏 Bloqué sur une énigme ? Un joker débloque la réponse pour 10€.</p>
   </article>
 </section>
@@ -573,6 +601,10 @@
       <option value="plan-simple">Un plan simple, sans prise de tête</option>
     </select>
 
+    <label>Date de naissance (de la personne la plus jeune du couple)</label>
+    <input type="date" class="date-naissance" required>
+    <p class="aide-champ">Réservé aux 18 ans et plus. Votre date de naissance n'est jamais montrée aux autres membres.</p>
+
     <label>
       <input type="checkbox" class="case-majeur" required>
       Nous certifions avoir tous les deux 18 ans ou plus et acceptons les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
@@ -621,6 +653,10 @@
       <option value="rencontre-serieuse">Une rencontre plus sérieuse</option>
       <option value="plan-simple">Un plan simple, sans prise de tête</option>
     </select>
+
+    <label>Date de naissance</label>
+    <input type="date" class="date-naissance" required>
+    <p class="aide-champ">Réservé aux 18 ans et plus. Votre date de naissance n'est jamais montrée aux autres membres.</p>
 
     <label>
       <input type="checkbox" class="case-majeur" required>
@@ -674,6 +710,10 @@
       <option value="plan-simple">Un plan simple, sans prise de tête</option>
     </select>
 
+    <label>Date de naissance</label>
+    <input type="date" class="date-naissance" required>
+    <p class="aide-champ">Réservé aux 18 ans et plus. Votre date de naissance n'est jamais montrée aux autres membres.</p>
+
     <label>
       <input type="checkbox" class="case-majeur" required>
       Je certifie avoir 18 ans ou plus et j'accepte les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
@@ -726,6 +766,10 @@
       <option value="plan-simple">Un plan simple, sans prise de tête</option>
     </select>
 
+    <label>Date de naissance</label>
+    <input type="date" class="date-naissance" required>
+    <p class="aide-champ">Réservé aux 18 ans et plus. Votre date de naissance n'est jamais montrée aux autres membres.</p>
+
     <label>
       <input type="checkbox" class="case-majeur" required>
       Je certifie avoir 18 ans ou plus et j'accepte les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
@@ -774,6 +818,20 @@
 
   </div>
   </section>
+
+<div id="verification-age">
+  <div class="inscription">
+    <h2>Une dernière vérification</h2>
+    <p>En Plein Air est strictement réservé aux adultes. Pour continuer, merci d'indiquer votre date de naissance (pour un couple : celle de la personne la plus jeune). Elle n'est jamais montrée aux autres membres.</p>
+    <form id="formulaire-verification-age">
+      <label for="age-date-naissance">Date de naissance</label>
+      <input type="date" id="age-date-naissance" min="1915-01-01" required>
+      <button type="submit" class="primaire" id="bouton-verification-age">Valider</button>
+      <p id="message-verification-age"></p>
+    </form>
+    <p style="margin-top:1.5em;"><button type="button" class="contour" onclick="deconnexion()">Se déconnecter</button></p>
+  </div>
+</div>
 
 <section id="nouveau-mot-de-passe">
   <div class="inscription">
@@ -894,7 +952,7 @@
   <p>Le salon de discussion ouvert à tous les abonnés.</p>
 
   <div id="chat-commun-verrou" style="display:none;">
-    <p>Un abonnement actif (20€/mois) est nécessaire pour accéder au chat commun.</p>
+    <p>Un abonnement actif (14,90 €/mois) est nécessaire pour accéder au chat commun.</p>
     <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
   </div>
 
@@ -1034,7 +1092,7 @@
   <p>Les présentes conditions encadrent l'utilisation du site En Plein Air, communauté de rencontres et d'aventures en plein air entre adultes consentants, ainsi que la vente de l'abonnement et des jokers.</p>
 
   <h3>2. Inscription</h3>
-  <p>L'inscription est gratuite et réservée aux personnes de 18 ans et plus. En s'inscrivant, le membre certifie être majeur, fournir des informations exactes et être seul utilisateur de son compte. Un seul compte par personne ou par couple.</p>
+  <p>L'inscription est gratuite et réservée aux personnes de 18 ans et plus. En s'inscrivant, le membre indique sa date de naissance, certifie être majeur, fournir des informations exactes et être seul utilisateur de son compte. Un seul compte par personne ou par couple.</p>
 
   <h3>3. Règles de conduite</h3>
   <p>Chaque membre s'engage à :</p>
@@ -1052,7 +1110,7 @@
 
   <h3>5. Offres payantes</h3>
   <p>
-    <strong>Abonnement :</strong> 20 € TTC par mois, sans engagement, reconduit automatiquement chaque mois. Il donne accès à toutes les aventures et au chat commun. La création d'aventures reste gratuite.<br>
+    <strong>Accès aux aventures et au chat commun :</strong> gratuit pour les profils Femme et Couple ; abonnement de 14,90 € TTC par mois pour les profils Homme et Trans, sans engagement, reconduit automatiquement chaque mois. Le type de profil choisi à l'inscription ne peut pas être modifié ensuite ; une fausse déclaration de profil entraîne la suppression du compte. La création d'aventures reste gratuite pour tous.<br>
     <strong>Joker :</strong> 10 € TTC par joker, paiement unique, pour révéler la réponse d'un indice.<br>
     Les paiements sont traités par Stripe ; nous n'avons jamais accès à vos coordonnées bancaires.
   </p>
@@ -1089,7 +1147,7 @@
     <li><strong>Photos et vidéos :</strong> l'album public et la photo de profil sont visibles des membres connectés ; l'album privé n'est visible que par vous. L'équipe de modération peut consulter tous les albums pour retirer les contenus interdits.</li>
     <li><strong>Messages, histoires, signalements, blocages :</strong> pour les échanges entre membres et la sécurité de la communauté.</li>
     <li><strong>Paiements :</strong> traités par Stripe ; nous ne conservons que l'identifiant client et l'état de l'abonnement.</li>
-    <li><strong>Certification de majorité :</strong> la date à laquelle vous avez certifié avoir 18 ans ou plus.</li>
+    <li><strong>Âge :</strong> votre date de naissance (pour un couple, celle de la personne la plus jeune) et la date à laquelle vous avez certifié avoir 18 ans ou plus — uniquement pour vérifier que le site est réservé aux adultes. Elle n'est jamais montrée aux autres membres.</li>
   </ul>
   <p>Certaines de ces informations (préférences de rencontre, photos) peuvent révéler votre vie intime : elles ne sont utilisées que pour le fonctionnement du site, jamais vendues ni transmises à des fins publicitaires.</p>
 
@@ -1313,7 +1371,8 @@ document.addEventListener("DOMContentLoaded", function() {
 const groupesPleinEcran = [
   ["chasse", "aventure-nature", "aventure-nuit", "aventure-defi"],
   ["decouvrir-aventures", "jouer-aventure"],
-  ["mentions-legales", "cgu", "confidentialite"]
+  ["mentions-legales", "cgu", "confidentialite"],
+  ["parametres"]
 ];
 
 // Envoie vers le formulaire de création si connecté, sinon vers l'inscription.
@@ -1330,6 +1389,10 @@ function trouverGroupePleinEcran(id) {
 
 function appliquerVuePleinEcran() {
   const id = window.location.hash.replace("#", "");
+  if (id === "parametres" && !localStorage.getItem("outdoor_access_token")) {
+    window.location.hash = "connexion";
+    return;
+  }
   const groupe = trouverGroupePleinEcran(id);
 
   document.querySelectorAll("section.vue-plein-ecran").forEach(function(sec) {
@@ -1412,6 +1475,30 @@ const formulaires = [
   }
 ];
 
+// Âge en années révolues à partir d'une date "AAAA-MM-JJ" (null si invalide)
+function calculerAge(dateTexte) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTexte || "")) return null;
+  const [a, m, j] = dateTexte.split("-").map(Number);
+  const naissance = new Date(a, m - 1, j);
+  if (isNaN(naissance) || naissance.getMonth() !== m - 1) return null;
+  const auj = new Date();
+  let age = auj.getFullYear() - a;
+  if (auj.getMonth() < m - 1 || (auj.getMonth() === m - 1 && auj.getDate() < j)) age--;
+  if (age < 0 || age > 110) return null;
+  return age;
+}
+
+// Date maximale sélectionnable : aujourd'hui moins 18 ans
+function dateIlYa18Ans() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 18);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+document.querySelectorAll(".date-naissance").forEach(function(champ) {
+  champ.max = dateIlYa18Ans();
+  champ.min = "1915-01-01";
+});
+
 formulaires.forEach(function(config) {
 
   const bloc = document.getElementById(config.bloc);
@@ -1444,6 +1531,19 @@ formulaires.forEach(function(config) {
     });
     const champRecherche = bloc.querySelector('select[name="recherche"]');
     const recherche = champRecherche ? champRecherche.value : "";
+
+    // Contrôle de l'âge avant même de créer le compte
+    const dateNaissance = bloc.querySelector(".date-naissance").value;
+    const age = calculerAge(dateNaissance);
+    if (age === null) {
+      alert("Merci d'indiquer une date de naissance valide.");
+      return;
+    }
+    if (age < 18) {
+      alert("Désolé, En Plein Air est strictement réservé aux personnes de 18 ans ou plus.");
+      formulaire.reset();
+      return;
+    }
 
     await avecChargement(bouton, "Création en cours...", async function() {
       try {
@@ -1494,7 +1594,8 @@ formulaires.forEach(function(config) {
               "recherche": recherche,
               "latitude": coords ? coords.lat : null,
               "longitude": coords ? coords.lon : null,
-              "majeur_certifie_le": bloc.querySelector(".case-majeur").checked ? new Date().toISOString() : null
+              "majeur_certifie_le": bloc.querySelector(".case-majeur").checked ? new Date().toISOString() : null,
+              "date_naissance": dateNaissance
             })
           }
         );
@@ -1570,6 +1671,7 @@ async function afficherProfil(accessToken, userEmail, userId) {
   document.getElementById("profil-presentation").textContent = profil["Présentation"] || "";
 
   window.monProfilCourant = profil;
+  document.getElementById("verification-age").classList.toggle("actif", !profil.date_naissance);
   afficherStatutAbonnement(profil);
   document.getElementById("case-notif-email").checked = !!profil.notif_email;
   document.getElementById("message-notif-email").textContent = "";
@@ -1584,12 +1686,59 @@ async function afficherProfil(accessToken, userEmail, userId) {
   chargerBlocages();
 }
 
+// Membres inscrits avant la date de naissance obligatoire : on la demande une fois
+document.getElementById("formulaire-verification-age").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const valeur = document.getElementById("age-date-naissance").value;
+  const message = document.getElementById("message-verification-age");
+  const bouton = document.getElementById("bouton-verification-age");
+  if (calculerAge(valeur) === null) {
+    message.textContent = "Merci d'indiquer une date de naissance valide.";
+    return;
+  }
+  await avecChargement(bouton, "Vérification...", async function() {
+    try {
+      const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/enregistrer_date_naissance", {
+        method: "POST",
+        headers: enTetesMembre(),
+        body: JSON.stringify({ p_date: valeur })
+      });
+      const resultat = await response.json();
+      if (!response.ok) throw new Error(resultat.message || "Erreur");
+      if (resultat === "mineur") {
+        alert("Désolé, En Plein Air est strictement réservé aux personnes de 18 ans ou plus. Votre compte va être examiné.");
+        deconnexion();
+        return;
+      }
+      window.monProfilCourant.date_naissance = valeur;
+      document.getElementById("verification-age").classList.remove("actif");
+      message.textContent = "";
+    } catch (error) {
+      console.error(error);
+      message.textContent = "Impossible d'enregistrer : " + error.message;
+    }
+  });
+});
+
+// Profils dont l'accès aux aventures et au chat commun est gratuit
+const PROFILS_GRATUITS = ["femme", "couple"];
+function accesGratuit(profil) {
+  return !!profil && PROFILS_GRATUITS.includes(String(profil.Profil || "").toLowerCase());
+}
+// Le membre a-t-il accès aux aventures ? (abonné ou profil gratuit)
+function aAcces(profil) {
+  return !!profil && (!!profil.abonnement_actif || accesGratuit(profil));
+}
+
 // Affiche le statut d'abonnement du membre et le bouton pour s'abonner
 function afficherStatutAbonnement(profil) {
   const statut = document.getElementById("statut-abonnement");
   const bouton = document.getElementById("bouton-abonnement");
 
-  if (profil.abonnement_actif) {
+  if (accesGratuit(profil) && !profil.abonnement_actif) {
+    statut.textContent = "Gratuit ✅ — accès complet offert aux profils Femme et Couple";
+    bouton.style.display = "none";
+  } else if (profil.abonnement_actif) {
     statut.textContent = "Actif ✅ — accès complet aux aventures";
     bouton.style.display = "none";
   } else {
@@ -1620,7 +1769,7 @@ document.getElementById("bouton-abonnement").addEventListener("click", async fun
 
   const bouton = this;
   if (bouton.dataset.enCours === "1") return;
-  if (!confirmerAccesImmediat("Abonnement mensuel : 20 € par mois, sans engagement, résiliable à tout moment.")) return;
+  if (!confirmerAccesImmediat("Abonnement mensuel : 14,90 € par mois, sans engagement, résiliable à tout moment.")) return;
 
   await avecChargement(bouton, "Redirection vers le paiement...", async function() {
     try {
@@ -2473,8 +2622,8 @@ async function chargerListeAventures() {
 
   const conteneur = document.getElementById("liste-aventures");
 
-  if (!window.monProfilCourant || !window.monProfilCourant.abonnement_actif) {
-    conteneur.innerHTML = '<p>Un abonnement actif (20€/mois) est nécessaire pour découvrir les aventures. <a href="#espace-membre">Voir mon profil</a></p>';
+  if (!aAcces(window.monProfilCourant)) {
+    conteneur.innerHTML = '<p>Un abonnement actif (14,90 €/mois) est nécessaire pour découvrir les aventures. <a href="#espace-membre">Voir mon profil</a></p>';
     return;
   }
 
@@ -2524,7 +2673,7 @@ async function chargerListeAventures() {
 
 // Démarre une aventure : charge ses indices
 async function demarrerAventure(aventure) {
-  if (!window.monProfilCourant || !window.monProfilCourant.abonnement_actif) {
+  if (!aAcces(window.monProfilCourant)) {
     alert("Un abonnement actif est nécessaire pour participer aux aventures.");
     return;
   }
@@ -2906,6 +3055,9 @@ async function deconnexion() {
   document.getElementById("liste-blocages").innerHTML = "<p>Aucun membre bloqué.</p>";
   document.getElementById("formulaire-modif-profil").style.display = "none";
   document.getElementById("formulaire-changer-mdp").style.display = "none";
+  document.getElementById("verification-age").classList.remove("actif");
+  document.getElementById("carte-supprimer-compte").open = false;
+  window.monProfilCourant = null;
   document.getElementById("photo-principale").style.display = "none";
   document.getElementById("placeholder-photo").style.display = "";
   mettreAJourNavigation(false);
@@ -3441,7 +3593,7 @@ const envoyerMessage = unSeulALaFois(async function() {
 let intervalleChatCommun = null;
 
 function ouvrirChatCommun() {
-  const abonne = window.monProfilCourant && window.monProfilCourant.abonnement_actif;
+  const abonne = aAcces(window.monProfilCourant);
   document.getElementById("chat-commun-verrou").style.display = abonne ? "none" : "";
   document.getElementById("chat-commun-zone").style.display = abonne ? "" : "none";
 
