@@ -79,6 +79,7 @@
     #visionneuse-photo {
       position: fixed; inset: 0; z-index: 10001;
       background: rgba(0,0,0,.92);
+      display: none;
       align-items: center; justify-content: center;
       padding: 24px;
     }
@@ -981,7 +982,7 @@
   <a class="contour" href="#espace-membre">Retour à mon profil</a>
 </section>
 
-<div id="visionneuse-photo" style="display:none;">
+<div id="visionneuse-photo">
   <button type="button" id="fermer-visionneuse" aria-label="Fermer">✕</button>
   <img id="visionneuse-image" src="" alt="Photo agrandie">
 </div>
