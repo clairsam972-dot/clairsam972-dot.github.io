@@ -51,6 +51,15 @@
     .conversation-texte strong { display: block; }
     .conversation-apercu { display: block; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .conversation-date { font-size: .8em; opacity: .7; white-space: nowrap; }
+    .avatar-annuaire {
+      width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 10px;
+    }
+    .moderation-membre {
+      border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 14px; margin-bottom: 14px;
+    }
+    .moderation-membre h3 { margin-top: 0; }
+    .moderation-membre .media-galerie img,
+    .moderation-membre .media-galerie video { max-width: 160px; }
   </style>
 </head>
 
@@ -80,6 +89,7 @@
     <a class="contour" id="nav-messages" style="display:none;" href="#mes-messages">Messages<span id="badge-messages" class="badge-non-lus" style="display:none;"></span></a>
     <a class="contour" id="nav-chat-commun" style="display:none;" href="#chat-commun">Chat commun</a>
     <a href="#creer-aventure" class="contour" id="nav-creer-aventure" style="display:none;">Créer une aventure</a>
+    <a class="contour" id="nav-moderation" style="display:none;" href="#moderation-albums">Modération albums</a>
     <button class="contour" id="nav-deconnexion" style="display:none;" onclick="deconnexion()">Se déconnecter</button>
   </nav>
 </header>
@@ -124,14 +134,25 @@
   </div>
 
   <div class="section-galerie">
-    <h3>Ma galerie (privée)</h3>
-    <p>Ajoutez vos photos et vidéos. Elles ne sont visibles que par vous.</p>
+    <h3>Album public</h3>
+    <p>Visible par les autres membres de la communauté.</p>
 
-    <input type="file" id="input-media" accept="image/*,video/*" style="display:none;">
-    <button type="button" class="primaire" id="bouton-ajouter-media">+ Ajouter une photo/vidéo</button>
-    <button type="button" class="contour" id="bouton-prendre-photo">📷 Prendre une photo</button>
+    <input type="file" id="input-media-public" accept="image/*,video/*" style="display:none;">
+    <button type="button" class="primaire" id="bouton-ajouter-media-public">+ Ajouter une photo/vidéo</button>
+    <button type="button" class="contour" id="bouton-prendre-photo-public">📷 Prendre une photo</button>
 
-    <div id="galerie-medias"></div>
+    <div id="galerie-medias-public"></div>
+  </div>
+
+  <div class="section-galerie">
+    <h3>Album privé</h3>
+    <p>Visible uniquement par vous.</p>
+
+    <input type="file" id="input-media-prive" accept="image/*,video/*" style="display:none;">
+    <button type="button" class="primaire" id="bouton-ajouter-media-prive">+ Ajouter une photo/vidéo</button>
+    <button type="button" class="contour" id="bouton-prendre-photo-prive">📷 Prendre une photo</button>
+
+    <div id="galerie-medias-prive"></div>
   </div>
 
   <a class="primaire" href="#decouvrir-aventures">Découvrir les aventures</a>
@@ -764,6 +785,20 @@
   <a class="contour" href="#espace-membre">Retour à mon profil</a>
 </section>
 
+<section id="moderation-albums" class="section">
+  <p class="sourcil">ADMINISTRATION</p>
+  <h2>Modération des albums</h2>
+  <p>Accès réservé à l'administratrice du site, pour vérifier qu'aucun contenu interdit n'apparaît dans les albums publics ou privés des membres.</p>
+  <div id="moderation-verrou" style="display:none;">
+    <p>Cette page est réservée à l'administratrice du site.</p>
+    <a class="primaire" href="#espace-membre">Retour à mon profil</a>
+  </div>
+  <div id="moderation-zone" style="display:none;">
+    <div id="moderation-liste-membres"><p>Chargement des membres...</p></div>
+  </div>
+  <a class="contour" href="#espace-membre">Retour à mon profil</a>
+</section>
+
 <div id="modale-chat" class="modale-overlay" style="display:none;">
   <div class="modale-contenu">
     <div class="modale-header">
@@ -836,6 +871,8 @@
 
 const SUPABASE_URL = "https://slvpdoovurqfykplefxe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_LahEM8Av6dykKdttDABUCg_T-TUMMvt";
+// Identifiant du compte administrateur (seul compte autorisé à consulter tous les albums pour modération)
+const ADMIN_USER_ID = "8954c131-c7ee-4e6f-af0f-2f55d8bc7a47";
 
 // ===== Protection et fiabilité =====
 
@@ -1068,6 +1105,7 @@ function mettreAJourNavigation(connecte) {
   document.getElementById("chat-commun").style.display = connecte ? "" : "none";
   document.getElementById("nav-creer-aventure").style.display = connecte ? "" : "none";
   document.getElementById("nav-deconnexion").style.display = connecte ? "" : "none";
+  if (!connecte) document.getElementById("nav-moderation").style.display = "none";
 
   document.getElementById("inscription").style.display = connecte ? "none" : "";
   document.getElementById("connexion").style.display = connecte ? "none" : "";
@@ -1260,8 +1298,10 @@ async function afficherProfil(accessToken, userEmail, userId) {
   document.getElementById("message-notif-email").textContent = "";
 
   idUtilisateurCourant = userId;
+  document.getElementById("nav-moderation").style.display = (userId === ADMIN_USER_ID) ? "" : "none";
   await chargerPhotoProfil();
-  await chargerGalerie();
+  await chargerAlbum(idUtilisateurCourant, "public", "galerie-medias-public", true);
+  await chargerAlbum(idUtilisateurCourant, "prive", "galerie-medias-prive", true);
   chargerHistoires();
   mettreAJourBadgeMessages();
 }
@@ -1465,14 +1505,20 @@ document.getElementById("input-photo-profil").addEventListener("change", functio
   e.target.value = "";
 });
 
-// Affiche la galerie privée du membre connecté
-async function chargerGalerie() {
+// Construit le chemin de stockage d'un sous-album ("public" ou "prive") d'un utilisateur.
+function cheminAlbum(userId, sousDossier) {
+  return userId + "/" + sousDossier + "/";
+}
+
+// Affiche l'album (public ou privé) d'un utilisateur dans le conteneur indiqué.
+// afficherActions=true ajoute le bouton Supprimer (à réserver à son propre album).
+async function chargerAlbum(userId, sousDossier, conteneurId, afficherActions) {
   const token = localStorage.getItem("outdoor_access_token");
-  const conteneur = document.getElementById("galerie-medias");
+  const conteneur = document.getElementById(conteneurId);
 
-  if (!token || !idUtilisateurCourant) return;
+  if (!token || !conteneur || !userId) return;
 
-  conteneur.innerHTML = '<p class="chargement">Chargement de votre galerie...</p>';
+  conteneur.innerHTML = '<p class="chargement">Chargement...</p>';
 
   try {
     const listeResponse = await fetch(
@@ -1485,7 +1531,7 @@ async function chargerGalerie() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          prefix: idUtilisateurCourant + "/",
+          prefix: cheminAlbum(userId, sousDossier),
           limit: 100,
           sortBy: { column: "created_at", order: "desc" }
         })
@@ -1493,10 +1539,9 @@ async function chargerGalerie() {
     );
 
     if (!listeResponse.ok) {
-      throw new Error("Impossible de charger la galerie");
+      throw new Error("Impossible de charger l'album");
     }
 
-    // Exclut les entrées "dossier" (ex: le sous-dossier de la photo de profil)
     const fichiers = (await listeResponse.json()).filter(function(f) {
       return f.id !== null;
     });
@@ -1509,19 +1554,19 @@ async function chargerGalerie() {
     conteneur.innerHTML = "";
 
     for (const fichier of fichiers) {
-      const vignette = await creerVignetteMedia(fichier, token);
+      const vignette = await creerVignetteMedia(fichier, token, userId, sousDossier, afficherActions);
       if (vignette) conteneur.appendChild(vignette);
     }
 
   } catch (error) {
     console.error(error);
-    conteneur.innerHTML = "<p>Erreur lors du chargement de la galerie.</p>";
+    conteneur.innerHTML = "<p>Erreur lors du chargement.</p>";
   }
 }
 
 // Génère une URL signée temporaire et la vignette (image ou vidéo) associée
-async function creerVignetteMedia(fichier, token) {
-  const chemin = idUtilisateurCourant + "/" + fichier.name;
+async function creerVignetteMedia(fichier, token, userId, sousDossier, afficherActions) {
+  const chemin = cheminAlbum(userId, sousDossier) + fichier.name;
   const estVideo = ((fichier.metadata && fichier.metadata.mimetype) || "").startsWith("video/");
 
   const signResponse = await fetch(
@@ -1544,21 +1589,26 @@ async function creerVignetteMedia(fichier, token) {
 
   const vignette = document.createElement("div");
   vignette.className = "media-galerie";
-  vignette.innerHTML =
-    (estVideo
-      ? '<video src="' + urlMedia + '" controls></video>'
-      : '<img src="' + urlMedia + '" alt="Média de la galerie">') +
-    '<button type="button" class="contour bouton-supprimer-media">Supprimer</button>';
+  vignette.innerHTML = estVideo
+    ? '<video src="' + urlMedia + '" controls></video>'
+    : '<img src="' + urlMedia + '" alt="Média">';
 
-  vignette.querySelector(".bouton-supprimer-media").addEventListener("click", function() {
-    supprimerMedia(fichier.name);
-  });
+  if (afficherActions) {
+    const boutonSupprimer = document.createElement("button");
+    boutonSupprimer.type = "button";
+    boutonSupprimer.className = "contour bouton-supprimer-media";
+    boutonSupprimer.textContent = "Supprimer";
+    boutonSupprimer.addEventListener("click", function() {
+      supprimerMedia(fichier.name, sousDossier);
+    });
+    vignette.appendChild(boutonSupprimer);
+  }
 
   return vignette;
 }
 
-// Envoie le fichier choisi vers le bucket privé du membre
-async function televerserMedia(file) {
+// Envoie le fichier choisi vers l'album (public ou privé) du membre connecté
+async function televerserMedia(file, sousDossier) {
   const token = localStorage.getItem("outdoor_access_token");
 
   if (!token || !idUtilisateurCourant) {
@@ -1573,8 +1623,9 @@ async function televerserMedia(file) {
   }
 
   const nomNettoye = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-  const chemin = idUtilisateurCourant + "/" + Date.now() + "-" + nomNettoye;
-  const bouton = document.getElementById("bouton-ajouter-media");
+  const chemin = cheminAlbum(idUtilisateurCourant, sousDossier) + Date.now() + "-" + nomNettoye;
+  const idConteneur = sousDossier === "public" ? "galerie-medias-public" : "galerie-medias-prive";
+  const bouton = document.getElementById(sousDossier === "public" ? "bouton-ajouter-media-public" : "bouton-ajouter-media-prive");
 
   await avecChargement(bouton, "Envoi en cours...", async function() {
     try {
@@ -1596,7 +1647,7 @@ async function televerserMedia(file) {
         throw new Error(erreur || "Échec de l'envoi");
       }
 
-      await chargerGalerie();
+      await chargerAlbum(idUtilisateurCourant, sousDossier, idConteneur, true);
 
     } catch (error) {
       console.error(error);
@@ -1605,14 +1656,15 @@ async function televerserMedia(file) {
   });
 }
 
-// Supprime un média de la galerie privée
-async function supprimerMedia(nomFichier) {
+// Supprime un média de son propre album (public ou privé)
+async function supprimerMedia(nomFichier, sousDossier) {
   const token = localStorage.getItem("outdoor_access_token");
 
   if (!token || !idUtilisateurCourant) return;
   if (!confirm("Supprimer ce média ?")) return;
 
-  const chemin = idUtilisateurCourant + "/" + nomFichier;
+  const chemin = cheminAlbum(idUtilisateurCourant, sousDossier) + nomFichier;
+  const idConteneur = sousDossier === "public" ? "galerie-medias-public" : "galerie-medias-prive";
 
   try {
     const response = await fetch(
@@ -1630,30 +1682,51 @@ async function supprimerMedia(nomFichier) {
       throw new Error("Échec de la suppression");
     }
 
-    await chargerGalerie();
+    await chargerAlbum(idUtilisateurCourant, sousDossier, idConteneur, true);
 
   } catch (error) {
     console.error(error);
     alert("Erreur lors de la suppression : " + error.message);
   }
 }
-document.getElementById("bouton-ajouter-media").addEventListener("click", function() {
-  const input = document.getElementById("input-media");
+
+document.getElementById("bouton-ajouter-media-public").addEventListener("click", function() {
+  const input = document.getElementById("input-media-public");
   input.setAttribute("accept", "image/*,video/*");
   input.removeAttribute("capture");
   input.click();
 });
 
-document.getElementById("bouton-prendre-photo").addEventListener("click", function() {
-  const input = document.getElementById("input-media");
+document.getElementById("bouton-prendre-photo-public").addEventListener("click", function() {
+  const input = document.getElementById("input-media-public");
   input.setAttribute("accept", "image/*");
   input.setAttribute("capture", "environment");
   input.click();
 });
 
-document.getElementById("input-media").addEventListener("change", function(e) {
+document.getElementById("input-media-public").addEventListener("change", function(e) {
   const fichier = e.target.files[0];
-  if (fichier) televerserMedia(fichier);
+  if (fichier) televerserMedia(fichier, "public");
+  e.target.value = "";
+});
+
+document.getElementById("bouton-ajouter-media-prive").addEventListener("click", function() {
+  const input = document.getElementById("input-media-prive");
+  input.setAttribute("accept", "image/*,video/*");
+  input.removeAttribute("capture");
+  input.click();
+});
+
+document.getElementById("bouton-prendre-photo-prive").addEventListener("click", function() {
+  const input = document.getElementById("input-media-prive");
+  input.setAttribute("accept", "image/*");
+  input.setAttribute("capture", "environment");
+  input.click();
+});
+
+document.getElementById("input-media-prive").addEventListener("change", function(e) {
+  const fichier = e.target.files[0];
+  if (fichier) televerserMedia(fichier, "prive");
   e.target.value = "";
 });
 
@@ -2221,7 +2294,99 @@ window.addEventListener("hashchange", function() {
   } else {
     arreterChatCommun();
   }
+  if (window.location.hash === "#moderation-albums") {
+    chargerModerationAlbums();
+  }
 });
+
+// Page de modération : réservée à l'administratrice (ADMIN_USER_ID).
+// Liste tous les membres et permet d'ouvrir leur album public ET privé
+// pour vérifier qu'aucun contenu interdit n'y figure.
+async function chargerModerationAlbums() {
+  const verrou = document.getElementById("moderation-verrou");
+  const zone = document.getElementById("moderation-zone");
+  const liste = document.getElementById("moderation-liste-membres");
+
+  if (!idUtilisateurCourant || idUtilisateurCourant !== ADMIN_USER_ID) {
+    verrou.style.display = "";
+    zone.style.display = "none";
+    return;
+  }
+
+  verrou.style.display = "none";
+  zone.style.display = "";
+  liste.innerHTML = "<p>Chargement des membres...</p>";
+
+  const token = localStorage.getItem("outdoor_access_token");
+
+  try {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/admin_liste_membres", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({})
+    });
+
+    if (!response.ok) throw new Error(await response.text());
+    const membres = await response.json();
+
+    if (membres.length === 0) {
+      liste.innerHTML = "<p>Aucun membre.</p>";
+      return;
+    }
+
+    liste.innerHTML = "";
+
+    membres.forEach(function(m) {
+      const bloc = document.createElement("div");
+      bloc.className = "moderation-membre";
+
+      const titre = document.createElement("h3");
+      titre.textContent = m.pseudonyme || "Membre";
+      bloc.appendChild(titre);
+
+      ["public", "prive"].forEach(function(sousDossier) {
+        const idConteneur = "moderation-album-" + sousDossier + "-" + m.user_id;
+        const conteneur = document.createElement("div");
+        conteneur.id = idConteneur;
+        conteneur.style.display = "none";
+
+        const bouton = document.createElement("button");
+        bouton.type = "button";
+        bouton.className = "contour";
+        const libelle = sousDossier === "public" ? "album public" : "album privé";
+        bouton.textContent = "Voir l'" + libelle;
+        let charge = false;
+        bouton.addEventListener("click", function() {
+          const visible = conteneur.style.display !== "none";
+          if (visible) {
+            conteneur.style.display = "none";
+            bouton.textContent = "Voir l'" + libelle;
+            return;
+          }
+          conteneur.style.display = "";
+          bouton.textContent = "Masquer l'" + libelle;
+          if (!charge) {
+            charge = true;
+            chargerAlbum(m.user_id, sousDossier, idConteneur, false);
+          }
+        });
+
+        bloc.appendChild(bouton);
+        bloc.appendChild(conteneur);
+      });
+
+      liste.appendChild(bloc);
+    });
+
+  } catch (error) {
+    console.error(error);
+    liste.innerHTML = "<p>Erreur lors du chargement des membres.</p>";
+  }
+}
 
 async function deconnexion() {
   const token = localStorage.getItem("outdoor_access_token");
@@ -2246,7 +2411,8 @@ async function deconnexion() {
   localStorage.removeItem("outdoor_access_token");
   localStorage.removeItem("outdoor_refresh_token");
   idUtilisateurCourant = null;
-  document.getElementById("galerie-medias").innerHTML = "";
+  document.getElementById("galerie-medias-public").innerHTML = "";
+  document.getElementById("galerie-medias-prive").innerHTML = "";
   document.getElementById("photo-principale").style.display = "none";
   document.getElementById("placeholder-photo").style.display = "";
   mettreAJourNavigation(false);
@@ -2355,6 +2521,27 @@ async function appliquerFiltre() {
   }
 }
 
+// Retourne l'URL signée d'un fichier du bucket médias, ou null s'il n'existe pas / n'est pas accessible
+async function signerFichierMedia(chemin) {
+  const token = localStorage.getItem("outdoor_access_token");
+  if (!token) return null;
+  try {
+    const signResponse = await fetch(
+      SUPABASE_URL + "/storage/v1/object/sign/" + NOM_BUCKET_MEDIAS + "/" + chemin,
+      {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ expiresIn: 3600 })
+      }
+    );
+    if (!signResponse.ok) return null;
+    const { signedURL } = await signResponse.json();
+    return SUPABASE_URL + (signedURL.startsWith("/storage/v1") ? signedURL : "/storage/v1" + signedURL);
+  } catch (error) {
+    return null;
+  }
+}
+
 function afficherResultatsAnnuaire(profils) {
   const container = document.getElementById("liste-profils");
   container.innerHTML = "";
@@ -2368,6 +2555,15 @@ function afficherResultatsAnnuaire(profils) {
     const carte = document.createElement("article");
     carte.className = "carte";
 
+    const avatar = document.createElement("img");
+    avatar.className = "avatar-annuaire";
+    avatar.alt = "Photo de " + (p.Pseudonyme || "membre");
+    avatar.style.display = "none";
+    carte.appendChild(avatar);
+    signerFichierMedia(p.user_id + "/profil/photo-profil").then(function(url) {
+      if (url) { avatar.src = url; avatar.style.display = ""; }
+    });
+
     function ajouter(balise, texte) {
       const el = document.createElement(balise);
       el.textContent = texte;
@@ -2380,6 +2576,33 @@ function afficherResultatsAnnuaire(profils) {
     ajouter("p", "Recherche : " + (p.recherche || "Non précisé"));
     if (p.envies && p.envies.length) ajouter("p", "Envies : " + p.envies.join(", "));
     ajouter("p", "📍 " + (p.ville_departement || "") + (p.distance_km != null ? " · à " + p.distance_km + " km" : ""));
+
+    const idAlbum = "album-public-" + p.user_id;
+    const conteneurAlbum = document.createElement("div");
+    conteneurAlbum.id = idAlbum;
+    conteneurAlbum.style.display = "none";
+
+    const boutonAlbum = document.createElement("button");
+    boutonAlbum.type = "button";
+    boutonAlbum.className = "contour";
+    boutonAlbum.textContent = "Voir l'album public";
+    let albumCharge = false;
+    boutonAlbum.addEventListener("click", function() {
+      const visible = conteneurAlbum.style.display !== "none";
+      if (visible) {
+        conteneurAlbum.style.display = "none";
+        boutonAlbum.textContent = "Voir l'album public";
+        return;
+      }
+      conteneurAlbum.style.display = "";
+      boutonAlbum.textContent = "Masquer l'album public";
+      if (!albumCharge) {
+        albumCharge = true;
+        chargerAlbum(p.user_id, "public", idAlbum, false);
+      }
+    });
+    carte.appendChild(boutonAlbum);
+    carte.appendChild(conteneurAlbum);
 
     const bouton = document.createElement("button");
     bouton.type = "button";
