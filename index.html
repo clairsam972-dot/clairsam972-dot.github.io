@@ -82,6 +82,20 @@
       width: 40px; height: 40px; font-size: 1.1em; cursor: pointer;
     }
     .avatar-annuaire, .media-galerie img { cursor: zoom-in; }
+    .a-completer { background: #f1c40f; color: #111; padding: 0 4px; border-radius: 3px; }
+    section.page-legale { display: none; }
+    body.plein-ecran section.page-legale.vue-plein-ecran { display: block; }
+    .page-legale h3 { margin-top: 1.4em; }
+    .page-legale ul { padding-left: 1.2em; }
+    .page-legale li { margin-bottom: .4em; }
+    .zone-danger { border: 1px solid rgba(192,57,43,.6) !important; }
+    .zone-danger #bouton-supprimer-compte { border-color: #c0392b; color: #e74c3c; }
+    .actions-membre { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .actions-membre button { font-size: .85em; }
+    .ligne-blocage { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+    #bandeau-membre-signale { background: rgba(192,57,43,.15); border: 1px solid rgba(192,57,43,.5); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; }
+    .actions-chat { display: flex; gap: 6px; }
+    .actions-chat button { font-size: .8em; padding: 4px 8px; }
   </style>
 </head>
 
@@ -145,6 +159,50 @@
   <div class="carte" id="carte-abonnement">
     <p><strong>Abonnement :</strong> <span id="statut-abonnement">Chargement...</span></p>
     <button type="button" class="primaire" id="bouton-abonnement" style="display:none;">S'abonner — 20€/mois</button>
+    <button type="button" class="contour" id="bouton-gerer-abonnement" style="display:none;">Gérer / résilier mon abonnement</button>
+    <p id="message-gerer-abonnement" style="font-size:.9em;opacity:.8;margin:6px 0 0;"></p>
+  </div>
+
+  <div class="carte" id="carte-modifier-profil">
+    <p><strong>Mon profil</strong></p>
+    <button type="button" class="contour" id="bouton-ouvrir-modif-profil">✏️ Modifier mon profil</button>
+    <form id="formulaire-modif-profil" style="display:none;margin-top:12px;">
+      <label for="modif-pseudo">Pseudonyme</label>
+      <input type="text" id="modif-pseudo" maxlength="40" required>
+
+      <label for="modif-ville">Ville ou département</label>
+      <input type="text" id="modif-ville" maxlength="100" required>
+
+      <label for="modif-presentation">Présentation</label>
+      <textarea id="modif-presentation" rows="5" maxlength="2000"></textarea>
+
+      <label for="modif-recherche">Ce que vous recherchez</label>
+      <select id="modif-recherche">
+        <option value="">-- Sélectionnez --</option>
+        <option value="partenaire-aventure">Un(e) partenaire d'aventure</option>
+        <option value="groupe-decouverte">Un groupe pour découvrir</option>
+        <option value="rencontre-serieuse">Une rencontre plus sérieuse</option>
+        <option value="plan-simple">Un plan simple, sans prise de tête</option>
+      </select>
+
+      <button type="submit" class="primaire" id="bouton-enregistrer-profil">Enregistrer</button>
+      <button type="button" class="contour" id="bouton-annuler-modif-profil">Annuler</button>
+      <p id="message-modif-profil"></p>
+    </form>
+  </div>
+
+  <div class="carte" id="carte-mot-de-passe">
+    <p><strong>Mot de passe</strong></p>
+    <button type="button" class="contour" id="bouton-ouvrir-mdp">🔒 Changer mon mot de passe</button>
+    <form id="formulaire-changer-mdp" style="display:none;margin-top:12px;">
+      <label for="changer-mdp-1">Nouveau mot de passe</label>
+      <input type="password" id="changer-mdp-1" minlength="6" required>
+      <label for="changer-mdp-2">Confirmez le nouveau mot de passe</label>
+      <input type="password" id="changer-mdp-2" minlength="6" required>
+      <button type="submit" class="primaire" id="bouton-changer-mdp">Enregistrer</button>
+      <button type="button" class="contour" id="bouton-annuler-mdp">Annuler</button>
+      <p id="message-changer-mdp"></p>
+    </form>
   </div>
 
   <div class="carte" id="carte-notifications">
@@ -175,6 +233,19 @@
     <button type="button" class="contour" id="bouton-prendre-photo-prive">📷 Prendre une photo</button>
 
     <div id="galerie-medias-prive"></div>
+  </div>
+
+  <div class="carte" id="carte-blocages">
+    <p><strong>Membres bloqués</strong></p>
+    <p style="font-size:.9em;opacity:.8;">Un membre bloqué ne peut plus vous écrire et ne vous voit plus dans l'annuaire (et inversement).</p>
+    <div id="liste-blocages"><p>Aucun membre bloqué.</p></div>
+  </div>
+
+  <div class="carte zone-danger" id="carte-supprimer-compte">
+    <p><strong>Supprimer mon compte</strong></p>
+    <p style="font-size:.9em;opacity:.8;">Supprime définitivement votre profil, vos photos, vos messages, vos histoires et vos aventures, et arrête votre abonnement. Cette action est irréversible.</p>
+    <button type="button" class="contour" id="bouton-supprimer-compte">Supprimer mon compte</button>
+    <p id="message-supprimer-compte"></p>
   </div>
 
   <a class="primaire" href="#decouvrir-aventures">Découvrir les aventures</a>
@@ -503,8 +574,8 @@
     </select>
 
     <label>
-      <input type="checkbox" required>
-      Nous confirmons être majeurs.
+      <input type="checkbox" class="case-majeur" required>
+      Nous certifions avoir tous les deux 18 ans ou plus et acceptons les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
     </label>
 
     <button type="submit" class="primaire">
@@ -552,8 +623,8 @@
     </select>
 
     <label>
-      <input type="checkbox" required>
-      Je confirme être majeur.
+      <input type="checkbox" class="case-majeur" required>
+      Je certifie avoir 18 ans ou plus et j'accepte les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
     </label>
 
     <button type="submit" class="primaire">
@@ -604,8 +675,8 @@
     </select>
 
     <label>
-      <input type="checkbox" required>
-      Je confirme être majeur.
+      <input type="checkbox" class="case-majeur" required>
+      Je certifie avoir 18 ans ou plus et j'accepte les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
     </label>
 
     <button type="submit" class="primaire">
@@ -656,8 +727,8 @@
     </select>
 
     <label>
-      <input type="checkbox" required>
-      Je confirme être majeur.
+      <input type="checkbox" class="case-majeur" required>
+      Je certifie avoir 18 ans ou plus et j'accepte les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
     </label>
 
     <button type="submit" class="primaire">
@@ -861,7 +932,11 @@
   <div class="modale-contenu">
     <div class="modale-header">
       <h3 id="chat-destinataire-nom">Conversation</h3>
-      <button type="button" onclick="fermerChat()">✕</button>
+      <div class="actions-chat">
+        <button type="button" class="contour" id="bouton-chat-signaler">🚩 Signaler</button>
+        <button type="button" class="contour" id="bouton-chat-bloquer">⛔ Bloquer</button>
+        <button type="button" onclick="fermerChat()">✕</button>
+      </div>
     </div>
     <div id="chat-messages" class="chat-messages"></div>
     <div class="chat-input-zone">
@@ -896,6 +971,10 @@
     une expérience ou un contenu qui ne respecte pas les règles.
   </p>
 
+  <div id="bandeau-membre-signale" style="display:none;">
+    Vous signalez le membre <strong id="nom-membre-signale"></strong>.
+    <button type="button" class="contour" id="bouton-annuler-membre-signale" style="font-size:.85em;margin-left:6px;">Ne pas cibler ce membre</button>
+  </div>
   <form id="formulaire-signalement">
     <label for="motif">Motif du rapport</label>
     <select id="motif" name="motif" required>
@@ -916,12 +995,130 @@
   </form>
 </section>
 
+<section id="mentions-legales" class="section compacte page-legale">
+  <p class="sourcil">INFORMATIONS LÉGALES</p>
+  <h2>Mentions légales</h2>
+
+  <h3>Éditeur du site</h3>
+  <p>
+    Le site En Plein Air est édité par <span class="a-completer">[Nom et prénom, ou nom de la société]</span>,
+    <span class="a-completer">[statut : particulier / micro-entreprise / société]</span>,
+    <span class="a-completer">[adresse postale]</span>.<br>
+    <span class="a-completer">[SIRET, si entreprise]</span><br>
+    Contact : <span class="a-completer">[adresse email de contact]</span> ou via le formulaire
+    « <a href="#rapport">Signaler un problème</a> ».<br>
+    Directrice de la publication : <span class="a-completer">[Nom et prénom]</span>.
+  </p>
+
+  <h3>Hébergement</h3>
+  <p>
+    Pages du site : GitHub Pages — GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis.<br>
+    Base de données, comptes et photos : Supabase, Inc. — données hébergées dans l'Union européenne (Paris, France).<br>
+    Paiements : Stripe Payments Europe, Ltd., 1 Grand Canal Street Lower, Dublin 2, Irlande.
+  </p>
+
+  <h3>Accès réservé aux adultes</h3>
+  <p>Ce site s'adresse exclusivement aux personnes majeures (18 ans et plus). Toute inscription d'une personne mineure est interdite et entraîne la suppression immédiate du compte.</p>
+
+  <h3>Propriété intellectuelle</h3>
+  <p>Les textes, logos et éléments graphiques du site sont protégés. Les photos et textes publiés par les membres restent leur propriété ; ils nous accordent seulement le droit de les afficher sur le site le temps de leur inscription.</p>
+
+  <p style="margin-top:2em;"><button type="button" class="contour" onclick="history.length > 1 ? history.back() : (window.location.hash = '')">← Retour</button></p>
+</section>
+
+<section id="cgu" class="section compacte page-legale">
+  <p class="sourcil">INFORMATIONS LÉGALES</p>
+  <h2>Conditions générales d'utilisation et de vente</h2>
+  <p style="font-size:.9em;opacity:.8;">En vigueur au <span class="a-completer">[date de mise en ligne]</span>.</p>
+
+  <h3>1. Objet</h3>
+  <p>Les présentes conditions encadrent l'utilisation du site En Plein Air, communauté de rencontres et d'aventures en plein air entre adultes consentants, ainsi que la vente de l'abonnement et des jokers.</p>
+
+  <h3>2. Inscription</h3>
+  <p>L'inscription est gratuite et réservée aux personnes de 18 ans et plus. En s'inscrivant, le membre certifie être majeur, fournir des informations exactes et être seul utilisateur de son compte. Un seul compte par personne ou par couple.</p>
+
+  <h3>3. Règles de conduite</h3>
+  <p>Chaque membre s'engage à :</p>
+  <ul>
+    <li>respecter le consentement, la vie privée et la dignité des autres membres ;</li>
+    <li>ne publier aucun contenu illégal, violent, haineux, impliquant des mineurs ou une personne n'ayant pas donné son accord ;</li>
+    <li>ne publier que des photos dont il est l'auteur ou sur lesquelles figurent uniquement des personnes consentantes ;</li>
+    <li>ne pas harceler, menacer, démarcher commercialement ou proposer des services rémunérés ;</li>
+    <li>respecter les lois en vigueur, notamment sur les lieux publics et privés, lors des rencontres et aventures.</li>
+  </ul>
+  <p>Tout manquement peut entraîner la suppression du contenu, la suspension ou la suppression du compte, sans remboursement, et un signalement aux autorités si nécessaire. Les membres peuvent bloquer et signaler un autre membre à tout moment.</p>
+
+  <h3>4. Rencontres</h3>
+  <p>En Plein Air met des membres en relation mais n'organise pas les rencontres et ne vérifie pas l'identité des membres. Chacun reste responsable de sa sécurité et de son comportement lors d'une rencontre. Nous recommandons de se rencontrer d'abord dans un lieu public et de prévenir un proche.</p>
+
+  <h3>5. Offres payantes</h3>
+  <p>
+    <strong>Abonnement :</strong> 20 € TTC par mois, sans engagement, reconduit automatiquement chaque mois. Il donne accès à toutes les aventures et au chat commun. La création d'aventures reste gratuite.<br>
+    <strong>Joker :</strong> 10 € TTC par joker, paiement unique, pour révéler la réponse d'un indice.<br>
+    Les paiements sont traités par Stripe ; nous n'avons jamais accès à vos coordonnées bancaires.
+  </p>
+
+  <h3>6. Résiliation</h3>
+  <p>L'abonnement peut être résilié à tout moment depuis « Mon profil » → « Gérer / résilier mon abonnement ». La résiliation prend effet à la fin du mois déjà payé ; l'accès reste ouvert jusque-là. Aucun prorata n'est remboursé.</p>
+
+  <h3>7. Droit de rétractation</h3>
+  <p>Conformément à l'article L221-28 du Code de la consommation, en demandant l'accès immédiat au service lors du paiement, le membre accepte que le service commence avant la fin du délai de rétractation de 14 jours et renonce à ce droit pour la période commencée. Un joker utilisé, dont la réponse a été révélée, ne peut pas être remboursé.</p>
+
+  <h3>8. Suppression du compte</h3>
+  <p>Le membre peut supprimer son compte à tout moment depuis « Mon profil » → « Supprimer mon compte ». Toutes ses données sont alors effacées et son abonnement est arrêté.</p>
+
+  <h3>9. Responsabilité</h3>
+  <p>Le site est fourni en l'état. Nous faisons notre possible pour qu'il fonctionne en continu mais ne pouvons garantir l'absence d'interruptions. Nous ne sommes pas responsables des contenus publiés par les membres, que nous retirons dès qu'ils nous sont signalés comme illicites.</p>
+
+  <h3>10. Litiges</h3>
+  <p>Ces conditions sont soumises au droit français. En cas de litige, le membre peut recourir gratuitement à un médiateur de la consommation : <span class="a-completer">[nom et site du médiateur choisi]</span>, ou à la plateforme européenne de règlement en ligne des litiges.</p>
+
+  <p style="margin-top:2em;"><button type="button" class="contour" onclick="history.length > 1 ? history.back() : (window.location.hash = '')">← Retour</button></p>
+</section>
+
+<section id="confidentialite" class="section compacte page-legale">
+  <p class="sourcil">INFORMATIONS LÉGALES</p>
+  <h2>Politique de confidentialité</h2>
+
+  <h3>Responsable du traitement</h3>
+  <p><span class="a-completer">[Nom de l'éditeur]</span> — contact : <span class="a-completer">[adresse email de contact]</span>.</p>
+
+  <h3>Données collectées et pourquoi</h3>
+  <ul>
+    <li><strong>Compte :</strong> email, mot de passe (chiffré), pseudonyme, type de profil, ville, présentation, ce que vous recherchez — pour faire fonctionner votre compte et l'annuaire.</li>
+    <li><strong>Localisation :</strong> coordonnées approximatives de votre ville, jamais montrées aux autres membres (seule la distance en km est affichée).</li>
+    <li><strong>Photos et vidéos :</strong> l'album public et la photo de profil sont visibles des membres connectés ; l'album privé n'est visible que par vous. L'équipe de modération peut consulter tous les albums pour retirer les contenus interdits.</li>
+    <li><strong>Messages, histoires, signalements, blocages :</strong> pour les échanges entre membres et la sécurité de la communauté.</li>
+    <li><strong>Paiements :</strong> traités par Stripe ; nous ne conservons que l'identifiant client et l'état de l'abonnement.</li>
+    <li><strong>Certification de majorité :</strong> la date à laquelle vous avez certifié avoir 18 ans ou plus.</li>
+  </ul>
+  <p>Certaines de ces informations (préférences de rencontre, photos) peuvent révéler votre vie intime : elles ne sont utilisées que pour le fonctionnement du site, jamais vendues ni transmises à des fins publicitaires.</p>
+
+  <h3>Base légale</h3>
+  <p>Exécution du contrat (votre inscription et vos achats), votre consentement (données sensibles, notifications par email) et notre intérêt légitime à assurer la sécurité de la communauté (modération, signalements).</p>
+
+  <h3>Durée de conservation</h3>
+  <p>Vos données sont conservées tant que votre compte existe et effacées dès sa suppression. Les signalements sont conservés anonymisés pour la modération. Les données de facturation sont conservées par Stripe selon ses obligations légales.</p>
+
+  <h3>Destinataires</h3>
+  <p>Nos prestataires techniques uniquement : Supabase (base de données, UE), GitHub (hébergement des pages), Stripe (paiements), Resend (emails de notification).</p>
+
+  <h3>Vos droits</h3>
+  <p>Vous pouvez accéder à vos données, les corriger (« Modifier mon profil »), les supprimer (« Supprimer mon compte »), vous opposer à leur traitement ou demander leur portabilité en nous écrivant. Vous pouvez aussi déposer une réclamation auprès de la CNIL (www.cnil.fr).</p>
+
+  <h3>Cookies</h3>
+  <p>Le site n'utilise aucun cookie publicitaire ni de mesure d'audience. Il enregistre seulement dans votre navigateur les informations nécessaires pour garder votre session ouverte.</p>
+
+  <p style="margin-top:2em;"><button type="button" class="contour" onclick="history.length > 1 ? history.back() : (window.location.hash = '')">← Retour</button></p>
+</section>
+
 </main>
 <footer>
   <p>© 2026 En Plein Air</p>
   <p>Adultes uniquement • Respect • Sécurité</p>
   <p class="liens-footer">
-    <a href="#securite">Sécurité</a> · <a href="#rapport">Signaler un problème</a>
+    <a href="#securite">Sécurité</a> · <a href="#rapport">Signaler un problème</a><br>
+    <a href="#mentions-legales">Mentions légales</a> · <a href="#cgu">CGU / CGV</a> · <a href="#confidentialite">Confidentialité</a>
   </p>
 </footer>
 
@@ -1116,7 +1313,8 @@ document.addEventListener("DOMContentLoaded", function() {
 // reste de la page pour n'afficher que la section concernée, avec retour.
 const groupesPleinEcran = [
   ["chasse", "aventure-nature", "aventure-nuit", "aventure-defi"],
-  ["decouvrir-aventures", "jouer-aventure"]
+  ["decouvrir-aventures", "jouer-aventure"],
+  ["mentions-legales", "cgu", "confidentialite"]
 ];
 
 // Envoie vers le formulaire de création si connecté, sinon vers l'inscription.
@@ -1296,7 +1494,8 @@ formulaires.forEach(function(config) {
               "envies": envies,
               "recherche": recherche,
               "latitude": coords ? coords.lat : null,
-              "longitude": coords ? coords.lon : null
+              "longitude": coords ? coords.lon : null,
+              "majeur_certifie_le": bloc.querySelector(".case-majeur").checked ? new Date().toISOString() : null
             })
           }
         );
@@ -1383,6 +1582,7 @@ async function afficherProfil(accessToken, userEmail, userId) {
   await chargerAlbum(idUtilisateurCourant, "prive", "galerie-medias-prive", true);
   chargerHistoires();
   mettreAJourBadgeMessages();
+  chargerBlocages();
 }
 
 // Affiche le statut d'abonnement du membre et le bouton pour s'abonner
@@ -1397,6 +1597,18 @@ function afficherStatutAbonnement(profil) {
     statut.textContent = "Aucun abonnement actif";
     bouton.style.display = "";
   }
+  // Le portail Stripe n'a de sens que pour un abonnement réellement payé
+  document.getElementById("bouton-gerer-abonnement").style.display = profil.stripe_customer_id ? "" : "none";
+  document.getElementById("message-gerer-abonnement").textContent =
+    (profil.abonnement_actif && !profil.stripe_customer_id) ? "Accès offert : aucun paiement à gérer." : "";
+}
+
+// Renonciation au délai de rétractation (accès immédiat), à accepter avant tout paiement
+function confirmerAccesImmediat(libelle) {
+  return confirm(
+    libelle + "\n\nEn continuant, vous demandez l'accès immédiat au service et renoncez à votre droit de " +
+    "rétractation de 14 jours pour la période commencée (voir les conditions générales)."
+  );
 }
 
 document.getElementById("bouton-abonnement").addEventListener("click", async function() {
@@ -1408,6 +1620,8 @@ document.getElementById("bouton-abonnement").addEventListener("click", async fun
   }
 
   const bouton = this;
+  if (bouton.dataset.enCours === "1") return;
+  if (!confirmerAccesImmediat("Abonnement mensuel : 20 € par mois, sans engagement, résiliable à tout moment.")) return;
 
   await avecChargement(bouton, "Redirection vers le paiement...", async function() {
     try {
@@ -1522,6 +1736,40 @@ async function chargerPhotoProfil() {
 // navigateurs) en JPEG avant l'envoi, pour qu'elle s'affiche bien chez tous les membres.
 // Retourne le fichier tel quel s'il n'y a rien à convertir, ou null si la conversion échoue.
 async function convertirSiBesoin(file) {
+  const converti = await convertirHeic(file);
+  if (!converti) return null;
+  return await compresserImage(converti);
+}
+
+// Réduit les photos lourdes (max 1600 px de côté, JPEG qualité 85 %) pour un
+// affichage rapide sur mobile. Les vidéos, GIF et petites images sont laissés tels quels.
+const COTE_MAX_PHOTO = 1600;
+async function compresserImage(file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return file;
+  try {
+    const image = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const echelle = Math.min(1, COTE_MAX_PHOTO / Math.max(image.width, image.height));
+    if (echelle === 1 && file.size < 600 * 1024) { image.close(); return file; }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.width * echelle);
+    canvas.height = Math.round(image.height * echelle);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; // fond blanc pour les PNG transparents
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    image.close();
+
+    const blob = await new Promise(function(resolve) { canvas.toBlob(resolve, "image/jpeg", 0.85); });
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch (error) {
+    console.error("Compression impossible, envoi de l'original :", error);
+    return file;
+  }
+}
+
+async function convertirHeic(file) {
   const estHeic = /\.hei[cf]$/i.test(file.name) || file.type === "image/heic" || file.type === "image/heif";
   if (!estHeic) return file;
 
@@ -2368,6 +2616,8 @@ document.getElementById("bouton-joker").addEventListener("click", async function
   }
 
   const bouton = this;
+  if (bouton.dataset.enCours === "1") return;
+  if (!confirmerAccesImmediat("Joker : 10 € pour révéler la réponse de cet indice (si vous l'avez déjà acheté, il ne sera pas facturé à nouveau).")) return;
 
   await avecChargement(bouton, "Redirection vers le paiement...", async function() {
     try {
@@ -2654,6 +2904,9 @@ async function deconnexion() {
   idUtilisateurCourant = null;
   document.getElementById("galerie-medias-public").innerHTML = "";
   document.getElementById("galerie-medias-prive").innerHTML = "";
+  document.getElementById("liste-blocages").innerHTML = "<p>Aucun membre bloqué.</p>";
+  document.getElementById("formulaire-modif-profil").style.display = "none";
+  document.getElementById("formulaire-changer-mdp").style.display = "none";
   document.getElementById("photo-principale").style.display = "none";
   document.getElementById("placeholder-photo").style.display = "";
   mettreAJourNavigation(false);
@@ -2857,6 +3110,26 @@ function afficherResultatsAnnuaire(profils) {
     });
     carte.appendChild(bouton);
 
+    const actions = document.createElement("div");
+    actions.className = "actions-membre";
+    const boutonSignaler = document.createElement("button");
+    boutonSignaler.type = "button";
+    boutonSignaler.className = "contour";
+    boutonSignaler.textContent = "🚩 Signaler";
+    boutonSignaler.addEventListener("click", function() {
+      signalerMembre(p.user_id, p.Pseudonyme);
+    });
+    const boutonBloquer = document.createElement("button");
+    boutonBloquer.type = "button";
+    boutonBloquer.className = "contour";
+    boutonBloquer.textContent = "⛔ Bloquer";
+    boutonBloquer.addEventListener("click", function() {
+      bloquerMembre(p.user_id, p.Pseudonyme);
+    });
+    actions.appendChild(boutonSignaler);
+    actions.appendChild(boutonBloquer);
+    carte.appendChild(actions);
+
     container.appendChild(carte);
   });
 }
@@ -2911,7 +3184,7 @@ async function chargerMessages() {
   }
 
   messages.forEach(function(m) {
-  const bulle = document.createElement("div");
+    const bulle = document.createElement("div");
     bulle.className = "msg-bulle " + (m.sender_id === idUtilisateurCourant ? "msg-envoye" : "msg-recu");
     bulle.textContent = m.content;
     container.appendChild(bulle);
@@ -3452,7 +3725,8 @@ document.getElementById("formulaire-signalement").addEventListener("submit", asy
         body: JSON.stringify({
           user_id: idUtilisateurCourant,
           motif: motif,
-          message: message
+          message: message,
+          membre_signale: window.membreASignaler ? window.membreASignaler.id : null
         })
       });
 
@@ -3462,6 +3736,7 @@ document.getElementById("formulaire-signalement").addEventListener("submit", asy
       }
 
       formulaire.reset();
+      annulerMembreSignale();
       retour.textContent = "Merci, votre signalement a bien été envoyé. Il sera traité rapidement.";
     } catch (error) {
       console.error(error);
@@ -3558,6 +3833,310 @@ async function gererRetourJoker() {
 
 
 gererRetourJoker();
+// ============================================================
+// COMPTE : abonnement, profil, mot de passe, blocages, suppression
+// ============================================================
+
+function enTetesMembre() {
+  return {
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + localStorage.getItem("outdoor_access_token"),
+    "Content-Type": "application/json"
+  };
+}
+
+// Gérer / résilier l'abonnement : ouvre le portail client Stripe
+document.getElementById("bouton-gerer-abonnement").addEventListener("click", async function() {
+  const bouton = this;
+  const retour = document.getElementById("message-gerer-abonnement");
+  await avecChargement(bouton, "Ouverture...", async function() {
+    try {
+      const response = await fetch(SUPABASE_URL + "/functions/v1/gerer-abonnement", {
+        method: "POST",
+        headers: enTetesMembre(),
+        body: JSON.stringify({ return_url: window.location.origin + window.location.pathname })
+      });
+      const data = await response.json().catch(function() { return {}; });
+      if (!response.ok || !data.url) {
+        retour.textContent = data.error || "Impossible d'ouvrir la gestion de l'abonnement. Réessayez plus tard.";
+        return;
+      }
+      window.location.href = data.url;
+      await attendreRedirection();
+    } catch (error) {
+      console.error(error);
+      retour.textContent = "Impossible d'ouvrir la gestion de l'abonnement. Réessayez plus tard.";
+    }
+  });
+});
+
+// Modifier son profil
+document.getElementById("bouton-ouvrir-modif-profil").addEventListener("click", function() {
+  const p = window.monProfilCourant || {};
+  document.getElementById("modif-pseudo").value = p.Pseudonyme || "";
+  document.getElementById("modif-ville").value = p.ville_departement || "";
+  document.getElementById("modif-presentation").value = p["Présentation"] || "";
+  document.getElementById("modif-recherche").value = p.recherche || "";
+  document.getElementById("message-modif-profil").textContent = "";
+  document.getElementById("formulaire-modif-profil").style.display = "";
+  this.style.display = "none";
+});
+
+function fermerModifProfil() {
+  document.getElementById("formulaire-modif-profil").style.display = "none";
+  document.getElementById("bouton-ouvrir-modif-profil").style.display = "";
+}
+document.getElementById("bouton-annuler-modif-profil").addEventListener("click", fermerModifProfil);
+
+document.getElementById("formulaire-modif-profil").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const retour = document.getElementById("message-modif-profil");
+  const bouton = document.getElementById("bouton-enregistrer-profil");
+  const p = window.monProfilCourant || {};
+
+  const pseudo = document.getElementById("modif-pseudo").value.trim();
+  const ville = document.getElementById("modif-ville").value.trim();
+  const presentation = document.getElementById("modif-presentation").value.trim();
+  const recherche = document.getElementById("modif-recherche").value;
+
+  await avecChargement(bouton, "Enregistrement...", async function() {
+    try {
+      // Nouvelle ville : on recalcule la position pour l'annuaire
+      let coords = null;
+      if (ville && ville !== (p.ville_departement || "")) {
+        coords = await geocoderVille(ville);
+        if (!coords) {
+          retour.textContent = "Ville introuvable. Vérifiez l'orthographe ou indiquez une ville proche.";
+          return;
+        }
+      }
+
+      const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/maj_profil", {
+        method: "POST",
+        headers: enTetesMembre(),
+        body: JSON.stringify({
+          pseudo: pseudo,
+          presentation: presentation,
+          ville: ville,
+          recherche_choisie: recherche,
+          lat: coords ? coords.lat : null,
+          lon: coords ? coords.lon : null
+        })
+      });
+
+      if (!response.ok) {
+        retour.textContent = await lireMessageErreur(response, "Impossible d'enregistrer. Réessayez plus tard.");
+        return;
+      }
+
+      Object.assign(p, {
+        Pseudonyme: pseudo,
+        ville_departement: ville,
+        "Présentation": presentation,
+        recherche: recherche
+      });
+      if (coords) { p.latitude = coords.lat; p.longitude = coords.lon; }
+      document.getElementById("profil-pseudo-titre").textContent = pseudo;
+      document.getElementById("profil-ville").textContent = ville;
+      document.getElementById("profil-presentation").textContent = presentation;
+      fermerModifProfil();
+      afficherAlerte("Profil mis à jour ✅", "info");
+    } catch (error) {
+      console.error(error);
+      retour.textContent = "Impossible d'enregistrer. Réessayez plus tard.";
+    }
+  });
+});
+
+// Changer son mot de passe (membre connecté)
+document.getElementById("bouton-ouvrir-mdp").addEventListener("click", function() {
+  document.getElementById("formulaire-changer-mdp").style.display = "";
+  document.getElementById("message-changer-mdp").textContent = "";
+  this.style.display = "none";
+});
+
+function fermerChangerMdp() {
+  const f = document.getElementById("formulaire-changer-mdp");
+  f.reset();
+  f.style.display = "none";
+  document.getElementById("bouton-ouvrir-mdp").style.display = "";
+}
+document.getElementById("bouton-annuler-mdp").addEventListener("click", fermerChangerMdp);
+
+document.getElementById("formulaire-changer-mdp").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const mdp1 = document.getElementById("changer-mdp-1").value;
+  const mdp2 = document.getElementById("changer-mdp-2").value;
+  const retour = document.getElementById("message-changer-mdp");
+  const bouton = document.getElementById("bouton-changer-mdp");
+
+  if (mdp1.length < 6) { retour.textContent = "Au moins 6 caractères."; return; }
+  if (mdp1 !== mdp2) { retour.textContent = "Les deux mots de passe ne correspondent pas."; return; }
+
+  await avecChargement(bouton, "Enregistrement...", async function() {
+    try {
+      const response = await fetch(SUPABASE_URL + "/auth/v1/user", {
+        method: "PUT",
+        headers: enTetesMembre(),
+        body: JSON.stringify({ password: mdp1 })
+      });
+      if (!response.ok) {
+        retour.textContent = await lireMessageErreur(response, "Impossible de changer le mot de passe. Reconnectez-vous puis réessayez.");
+        return;
+      }
+      fermerChangerMdp();
+      afficherAlerte("Mot de passe modifié ✅", "info");
+    } catch (error) {
+      console.error(error);
+      retour.textContent = "Impossible de changer le mot de passe. Réessayez plus tard.";
+    }
+  });
+});
+
+// Blocages
+async function chargerBlocages() {
+  const liste = document.getElementById("liste-blocages");
+  if (!localStorage.getItem("outdoor_access_token")) return;
+  try {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/mes_blocages", {
+      method: "POST", headers: enTetesMembre(), body: "{}"
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const bloques = await response.json();
+
+    if (bloques.length === 0) {
+      liste.innerHTML = "<p>Aucun membre bloqué.</p>";
+      return;
+    }
+    liste.innerHTML = "";
+    bloques.forEach(function(b) {
+      const ligne = document.createElement("div");
+      ligne.className = "ligne-blocage";
+      const nom = document.createElement("span");
+      nom.textContent = b.pseudo;
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "contour";
+      bouton.textContent = "Débloquer";
+      bouton.addEventListener("click", function() { debloquerMembre(b.user_id, b.pseudo, bouton); });
+      ligne.appendChild(nom);
+      ligne.appendChild(bouton);
+      liste.appendChild(ligne);
+    });
+  } catch (error) {
+    console.error(error);
+    liste.innerHTML = "<p>Impossible de charger la liste.</p>";
+  }
+}
+
+async function bloquerMembre(membreId, pseudo) {
+  if (!membreId || !idUtilisateurCourant) return;
+  if (!confirm("Bloquer " + (pseudo || "ce membre") + " ?\n\nVous ne pourrez plus vous écrire et vous ne vous verrez plus dans l'annuaire. Vous pourrez le débloquer depuis votre profil.")) return;
+
+  try {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/blocages", {
+      method: "POST",
+      headers: Object.assign(enTetesMembre(), { "Prefer": "return=minimal,resolution=ignore-duplicates" }),
+      body: JSON.stringify({ bloqueur: idUtilisateurCourant, bloque: membreId })
+    });
+    if (!response.ok && response.status !== 409) {
+      alert(await lireMessageErreur(response, "Impossible de bloquer ce membre. Réessayez plus tard."));
+      return;
+    }
+    if (destinataireActuelId === membreId) fermerChat();
+    afficherAlerte((pseudo || "Le membre") + " est bloqué.", "info");
+    chargerBlocages();
+    mettreAJourBadgeMessages();
+    if (window.location.hash === "#annuaire-membres") appliquerFiltre();
+    if (window.location.hash === "#mes-messages") chargerConversations();
+  } catch (error) {
+    console.error(error);
+    alert("Impossible de bloquer ce membre. Réessayez plus tard.");
+  }
+}
+
+async function debloquerMembre(membreId, pseudo, bouton) {
+  if (!confirm("Débloquer " + (pseudo || "ce membre") + " ?")) return;
+  await avecChargement(bouton, "...", async function() {
+    try {
+      const response = await fetch(
+        SUPABASE_URL + "/rest/v1/blocages?bloqueur=eq." + idUtilisateurCourant + "&bloque=eq." + membreId,
+        { method: "DELETE", headers: enTetesMembre() }
+      );
+      if (!response.ok) throw new Error(await response.text());
+      afficherAlerte((pseudo || "Le membre") + " est débloqué.", "info");
+      chargerBlocages();
+    } catch (error) {
+      console.error(error);
+      alert("Impossible de débloquer ce membre. Réessayez plus tard.");
+    }
+  });
+}
+
+document.getElementById("bouton-chat-bloquer").addEventListener("click", function() {
+  bloquerMembre(destinataireActuelId, document.getElementById("chat-destinataire-nom").textContent);
+});
+
+// Signaler un membre précis : pré-remplit le formulaire "Signaler un problème"
+function signalerMembre(membreId, pseudo) {
+  window.membreASignaler = { id: membreId, pseudo: pseudo || "Membre" };
+  document.getElementById("nom-membre-signale").textContent = window.membreASignaler.pseudo;
+  document.getElementById("bandeau-membre-signale").style.display = "";
+  document.getElementById("message-signalement").textContent = "";
+  if (destinataireActuelId) fermerChat();
+  window.location.hash = "rapport";
+}
+
+function annulerMembreSignale() {
+  window.membreASignaler = null;
+  document.getElementById("bandeau-membre-signale").style.display = "none";
+}
+document.getElementById("bouton-annuler-membre-signale").addEventListener("click", annulerMembreSignale);
+
+document.getElementById("bouton-chat-signaler").addEventListener("click", function() {
+  signalerMembre(destinataireActuelId, document.getElementById("chat-destinataire-nom").textContent);
+});
+
+// Supprimer son compte (définitif)
+document.getElementById("bouton-supprimer-compte").addEventListener("click", async function() {
+  const bouton = this;
+  const retour = document.getElementById("message-supprimer-compte");
+  const saisie = prompt(
+    "Cette action est définitive : profil, photos, messages, histoires et aventures seront effacés, " +
+    "et votre abonnement sera arrêté.\n\nPour confirmer, tapez SUPPRIMER :"
+  );
+  if (saisie === null) return;
+  if (saisie.trim().toUpperCase() !== "SUPPRIMER") {
+    retour.textContent = "Suppression annulée : le mot de confirmation ne correspond pas.";
+    return;
+  }
+
+  await avecChargement(bouton, "Suppression en cours...", async function() {
+    try {
+      const response = await fetch(SUPABASE_URL + "/functions/v1/supprimer-compte", {
+        method: "POST",
+        headers: enTetesMembre(),
+        body: JSON.stringify({ confirmation: "SUPPRIMER" })
+      });
+      const data = await response.json().catch(function() { return {}; });
+      if (!response.ok || !data.supprime) {
+        retour.textContent = data.error || "La suppression n'a pas pu aboutir. Réessayez plus tard.";
+        return;
+      }
+      localStorage.removeItem("outdoor_access_token");
+      localStorage.removeItem("outdoor_refresh_token");
+      alert("Votre compte a été supprimé. Merci d'avoir fait partie d'En Plein Air.");
+      window.location.href = window.location.pathname;
+      await attendreRedirection();
+    } catch (error) {
+      console.error(error);
+      retour.textContent = "La suppression n'a pas pu aboutir. Réessayez plus tard.";
+    }
+  });
+});
+
 </script>
 </body>
 </html>
+
+ 
