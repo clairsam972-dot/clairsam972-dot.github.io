@@ -1884,20 +1884,25 @@ async function chargerPhotoProfil() {
 // Convertit une photo HEIC/HEIF (format des iPhone, illisible par la plupart des
 // navigateurs) en JPEG avant l'envoi, pour qu'elle s'affiche bien chez tous les membres.
 // Retourne le fichier tel quel s'il n'y a rien à convertir, ou null si la conversion échoue.
-async function convertirSiBesoin(file) {
+async function convertirSiBesoin(file, coteMax, qualite) {
   const converti = await convertirHeic(file);
   if (!converti) return null;
-  return await compresserImage(converti);
+  return await compresserImage(converti, coteMax, qualite);
 }
+
+// Photos de profil : plus petites (600 px de côté, qualité 80 %)
+const COTE_MAX_PHOTO_PROFIL = 600;
 
 // Réduit les photos lourdes (max 1600 px de côté, JPEG qualité 85 %) pour un
 // affichage rapide sur mobile. Les vidéos, GIF et petites images sont laissés tels quels.
 const COTE_MAX_PHOTO = 1600;
-async function compresserImage(file) {
+async function compresserImage(file, coteMax, qualite) {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return file;
+  coteMax = coteMax || COTE_MAX_PHOTO;
+  qualite = qualite || 0.85;
   try {
     const image = await createImageBitmap(file, { imageOrientation: "from-image" });
-    const echelle = Math.min(1, COTE_MAX_PHOTO / Math.max(image.width, image.height));
+    const echelle = Math.min(1, coteMax / Math.max(image.width, image.height));
     if (echelle === 1 && file.size < 600 * 1024) { image.close(); return file; }
 
     const canvas = document.createElement("canvas");
@@ -1909,8 +1914,10 @@ async function compresserImage(file) {
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     image.close();
 
-    const blob = await new Promise(function(resolve) { canvas.toBlob(resolve, "image/jpeg", 0.85); });
-    if (!blob || blob.size >= file.size) return file;
+    const blob = await new Promise(function(resolve) { canvas.toBlob(resolve, "image/jpeg", qualite); });
+    if (!blob) return file;
+    // Sans redimensionnement, on garde l'original s'il est déjà plus léger
+    if (echelle === 1 && blob.size >= file.size) return file;
     return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
   } catch (error) {
     console.error("Compression impossible, envoi de l'original :", error);
@@ -1947,7 +1954,7 @@ async function televerserPhotoProfil(file) {
     return;
   }
 
-  file = await convertirSiBesoin(file);
+  file = await convertirSiBesoin(file, COTE_MAX_PHOTO_PROFIL, 0.8);
   if (!file) return;
 
   const TAILLE_MAX = 10 * 1024 * 1024;
