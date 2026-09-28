@@ -61,6 +61,39 @@
     .moderation-membre .media-galerie img,
     .moderation-membre .media-galerie video { max-width: 160px; }
     #nouveau-mot-de-passe, #verification-age { display: none; }
+    .hero { gap: 40px; flex-wrap: wrap; align-items: flex-start; }
+    .hero .copie-hero { flex: 1 1 380px; padding-top: 40px; }
+    .accueil-boite {
+      flex: 1 1 420px; max-width: 560px; background: rgba(20, 13, 27, .92); border: 1px solid #3d2448;
+      border-radius: 16px; padding: 28px 22px; box-shadow: 0 15px 40px rgba(0, 0, 0, .35);
+    }
+    .hero .accueil-boite p { font-size: 16px; max-width: none; }
+    .hero .accueil-boite .accueil-bas { font-size: 13px; }
+    .accueil-apres { display: none; }
+    .accueil-apres a { display: block; text-align: center; padding: 14px; border-radius: 10px; text-decoration: none; color: #fff; font-weight: bold; }
+    body:not(.portail) .accueil-actions { display: none; }
+    body:not(.portail) .accueil-apres.visible { display: block; }
+    body.portail:not(.plein-ecran) main > section:not(.hero),
+    body.portail:not(.plein-ecran) main > div.formulaire-inscription,
+    body.portail footer,
+    body.portail .navigation nav,
+    body.portail .hero .actes { display: none !important; }
+    body.portail .hero { min-height: 100vh; }
+    @media (max-width: 700px) {
+      .hero .copie-hero { padding-top: 0; }
+      .hero { gap: 24px; }
+    }
+    .accueil-boite h2 { margin: 4px 0 8px; font-size: 1.6em; }
+    .accueil-boite .intro { opacity: .85; margin: 0 0 18px; }
+    .accueil-principes-liste { list-style: none; padding: 0; margin: 0 0 20px; }
+    .accueil-principes-liste li { display: flex; gap: 12px; margin-bottom: 14px; }
+    .accueil-principes-liste .emoji { font-size: 1.4em; line-height: 1.2; flex: 0 0 auto; }
+    .accueil-principes-liste strong { display: block; }
+    .accueil-principes-liste span.texte { font-size: .92em; opacity: .85; }
+    .accueil-actions { display: flex; flex-direction: column; gap: 10px; position: sticky; bottom: 0; background: #140d1b; padding: 12px 0 4px; box-shadow: 0 -12px 16px #140d1b; }
+    .accueil-actions button { width: 100%; }
+    .accueil-bas { font-size: .82em; opacity: .7; margin-top: 16px; text-align: center; }
+    .accueil-bas a { color: inherit; }
     #verification-age.actif {
       position: fixed; inset: 0; z-index: 9997; overflow-y: auto;
       background: #0f1a14; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px;
@@ -307,6 +340,38 @@
       <button class="contour" onclick="allerCreerAventure()">Créer une aventure</button>
     </div>
   </div>
+
+  <aside class="accueil-boite" id="accueil-principes" aria-labelledby="accueil-titre">
+    <p class="sourcil">BIENVENUE 🌿</p>
+    <h2 id="accueil-titre">Ici, on aime les frissons.</h2>
+    <p class="intro">Tu fais partie de celles et ceux qui adorent les moments forts, le cœur qui s'emballe et cette petite montée d'adrénaline du « et si quelqu'un nous voyait ? » 🔥 Alors bienvenue chez toi !</p>
+    <p class="intro">Exhibitionnisme et voyeurisme complices, ces jeux coquins entre adultes qui avaient peu à peu disparu… En Plein Air t'offre la possibilité de renouer avec cette pratique, au grand air, sans entrer en conflit avec la loi et uniquement avec des personnes consentantes.</p>
+    <p class="intro">Bien sûr, chacun reste responsable de ses actes et veille à ne jamais heurter la sensibilité des autres usagers des lieux. 😉</p>
+
+    <p class="intro"><strong>🗺️ Pour les plus joueurs :</strong> crée ton aventure sans dévoiler directement ton lieu coquin ! Sème plutôt des indices pour que les chasseurs aiguisent leur flair jusqu'à dénicher le Saint-Graal… Ton spectacle, ils devront le mériter 😏 Et donne tes instructions aux voyeurs qui te rejoindront directement en ligne, via la messagerie : chacun sait à quoi s'attendre, zéro malentendu.</p>
+
+    <p style="margin:0 0 12px;"><strong>Les règles du jeu (courtes, promis) :</strong></p>
+    <ul class="accueil-principes-liste">
+      <li><span class="emoji">🔞</span><div><strong>18 ans et plus, sans exception</strong><span class="texte">C'est un terrain de jeu pour les grands. Ta date de naissance te sera demandée à l'inscription.</span></div></li>
+      <li><span class="emoji">🤝</span><div><strong>Le consentement, c'est sexy</strong><span class="texte">On regarde, on se montre… uniquement entre complices qui ont dit oui. Un non, c'est non.</span></div></li>
+      <li><span class="emoji">🙈</span><div><strong>Jamais sous le nez des passants</strong><span class="texte">L'adrénaline oui, gêner les autres non : on choisit des coins discrets et on n'impose jamais le spectacle à ceux qui n'ont rien demandé (c'est aussi ce que dit la loi 😉).</span></div></li>
+      <li><span class="emoji">🤫</span><div><strong>Discrétion absolue</strong><span class="texte">Pseudonyme obligatoire, ta position n'est jamais affichée (juste une distance en km) et ton album privé ne regarde que toi.</span></div></li>
+      <li><span class="emoji">🛡️</span><div><strong>Une team bienveillante</strong><span class="texte">Un membre lourd ? Bloque-le ou signale-le en un clic, on s'en occupe.</span></div></li>
+      <li><span class="emoji">💳</span><div><strong>Côté porte-monnaie</strong><span class="texte">Inscription gratuite. Accès complet offert aux femmes et aux couples, 14,90 €/mois sans engagement pour les hommes et les personnes trans.</span></div></li>
+    </ul>
+
+    <div class="accueil-actions">
+      <button type="button" class="primaire" id="bouton-accueil-entrer">J'ai 18 ans ou plus — Je fonce 🔥</button>
+      <button type="button" class="contour" id="bouton-accueil-quitter">J'ai moins de 18 ans — Je sors</button>
+    </div>
+    <div class="accueil-apres" id="accueil-apres">
+      <a class="primaire" href="#inscription">Je m'inscris gratuitement</a>
+    </div>
+    <p class="accueil-bas">
+      Déjà membre ? <a href="#connexion" id="lien-accueil-connexion">Se connecter</a> ·
+      <a href="#cgu" id="lien-accueil-cgu">Conditions générales</a>
+    </p>
+  </aside>
 </section>
 
 <section id="experiences" class="section">
@@ -1205,6 +1270,39 @@ function afficherAlerte(message, type) {
   setTimeout(function() { alerte.remove(); }, 6000);
 }
 
+// Page d'accueil "portail" : tant que le visiteur n'a pas confirmé avoir 18 ans,
+// seuls le titre et le message d'accueil sont visibles. Mémorisé par navigateur.
+(function portailAccueil() {
+  let dejaVu = false;
+  try { dejaVu = localStorage.getItem("epa_accueil_vu") === "1"; } catch (e) {}
+  const connecte = !!localStorage.getItem("outdoor_access_token");
+  const hash = window.location.hash;
+  const pageDirecte = /type=recovery|access_token=/.test(hash) ||
+    window.location.search.includes("abonnement=");
+  if (!connecte && !dejaVu && !pageDirecte) {
+    document.body.classList.add("portail");
+    window.scrollTo(0, 0);
+  }
+
+  function entrer(versAncre) {
+    try { localStorage.setItem("epa_accueil_vu", "1"); } catch (e) {}
+    document.body.classList.remove("portail");
+    if (versAncre) window.location.hash = versAncre;
+  }
+  document.getElementById("bouton-accueil-entrer").addEventListener("click", function() {
+    entrer();
+    const suite = document.getElementById("experiences");
+    if (suite) suite.scrollIntoView({ behavior: "smooth" });
+  });
+  document.getElementById("lien-accueil-connexion").addEventListener("click", function(e) {
+    e.preventDefault();
+    entrer("connexion");
+  });
+  document.getElementById("bouton-accueil-quitter").addEventListener("click", function() {
+    window.location.href = "https://www.google.fr";
+  });
+})();
+
 // Écran de chargement : masqué une fois la session vérifiée (ou après 10 s au pire)
 function masquerChargement() {
   const ecran = document.getElementById("ecran-chargement");
@@ -1413,6 +1511,7 @@ window.addEventListener("hashchange", appliquerVuePleinEcran);
 appliquerVuePleinEcran();
 
 function mettreAJourNavigation(connecte) {
+  document.getElementById("accueil-apres").classList.toggle("visible", !connecte);
   document.getElementById("nav-inscription").style.display = connecte ? "none" : "";
   document.getElementById("nav-connexion").style.display = connecte ? "none" : "";
   document.getElementById("nav-profil").style.display = connecte ? "" : "none";
