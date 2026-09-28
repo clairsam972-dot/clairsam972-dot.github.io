@@ -65,6 +65,23 @@
       position: fixed; inset: 0; z-index: 9998; overflow-y: auto;
       background: #0f1a14; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px;
     }
+    #visionneuse-photo {
+      position: fixed; inset: 0; z-index: 10001;
+      background: rgba(0,0,0,.92);
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #visionneuse-photo.actif { display: flex; }
+    #visionneuse-photo img {
+      max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px;
+      cursor: zoom-out;
+    }
+    #fermer-visionneuse {
+      position: fixed; top: 16px; right: 16px;
+      background: rgba(255,255,255,.15); color: #fff; border: none; border-radius: 50%;
+      width: 40px; height: 40px; font-size: 1.1em; cursor: pointer;
+    }
+    .avatar-annuaire, .media-galerie img { cursor: zoom-in; }
   </style>
 </head>
 
@@ -835,6 +852,11 @@
   <a class="contour" href="#espace-membre">Retour à mon profil</a>
 </section>
 
+<div id="visionneuse-photo" style="display:none;">
+  <button type="button" id="fermer-visionneuse" aria-label="Fermer">✕</button>
+  <img id="visionneuse-image" src="" alt="Photo agrandie">
+</div>
+
 <div id="modale-chat" class="modale-overlay" style="display:none;">
   <div class="modale-contenu">
     <div class="modale-header">
@@ -1299,6 +1321,26 @@ formulaires.forEach(function(config) {
 const NOM_BUCKET_MEDIAS = "medias-profil";
 let idUtilisateurCourant = null;
 
+// Visionneuse plein écran : agrandit une photo au clic (avatars, albums...)
+function ouvrirVisionneuse(url) {
+  if (!url) return;
+  document.getElementById("visionneuse-image").src = url;
+  document.getElementById("visionneuse-photo").classList.add("actif");
+}
+function fermerVisionneuse() {
+  document.getElementById("visionneuse-photo").classList.remove("actif");
+  document.getElementById("visionneuse-image").src = "";
+}
+document.getElementById("visionneuse-photo").addEventListener("click", fermerVisionneuse);
+document.getElementById("fermer-visionneuse").addEventListener("click", fermerVisionneuse);
+document.getElementById("visionneuse-image").addEventListener("click", function(e) {
+  e.stopPropagation();
+  fermerVisionneuse();
+});
+window.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") fermerVisionneuse();
+});
+
 async function afficherProfil(accessToken, userEmail, userId) {
   const profilResponse = await fetch(
     SUPABASE_URL + "/rest/v1/Inscription?Email=eq." + encodeURIComponent(userEmail),
@@ -1656,6 +1698,12 @@ async function creerVignetteMedia(fichier, token, userId, sousDossier, afficherA
   vignette.innerHTML = estVideo
     ? '<video src="' + urlMedia + '" controls></video>'
     : '<img src="' + urlMedia + '" alt="Média">';
+
+  if (!estVideo) {
+    vignette.querySelector("img").addEventListener("click", function() {
+      ouvrirVisionneuse(urlMedia);
+    });
+  }
 
   if (afficherActions) {
     const boutonSupprimer = document.createElement("button");
@@ -2756,6 +2804,9 @@ function afficherResultatsAnnuaire(profils) {
     signerFichierMedia(p.user_id + "/profil/photo-profil").then(function(url) {
       if (url) { avatar.src = url; avatar.style.display = ""; }
     });
+    avatar.addEventListener("click", function() {
+      if (avatar.src) ouvrirVisionneuse(avatar.src);
+    });
 
     function ajouter(balise, texte) {
       const el = document.createElement(balise);
@@ -2860,7 +2911,7 @@ async function chargerMessages() {
   }
 
   messages.forEach(function(m) {
-    const bulle = document.createElement("div");
+  const bulle = document.createElement("div");
     bulle.className = "msg-bulle " + (m.sender_id === idUtilisateurCourant ? "msg-envoye" : "msg-recu");
     bulle.textContent = m.content;
     container.appendChild(bulle);
