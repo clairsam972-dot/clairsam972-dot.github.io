@@ -60,6 +60,11 @@
     .moderation-membre h3 { margin-top: 0; }
     .moderation-membre .media-galerie img,
     .moderation-membre .media-galerie video { max-width: 160px; }
+    #nouveau-mot-de-passe { display: none; }
+    #nouveau-mot-de-passe.actif {
+      position: fixed; inset: 0; z-index: 9998; overflow-y: auto;
+      background: #0f1a14; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px;
+    }
   </style>
 </head>
 
@@ -666,8 +671,39 @@
       <p class="message-connexion"></p>
 
     </form>
+
+    <button type="button" class="contour" id="bouton-mot-de-passe-oublie" style="margin-top:10px;">Mot de passe oublié ?</button>
+
+    <form id="formulaire-recuperation" style="display:none;margin-top:16px;">
+      <label for="email-recuperation">Adresse e-mail</label>
+      <input type="email" id="email-recuperation" required>
+
+      <button type="submit" class="primaire">Envoyer le lien de réinitialisation</button>
+      <button type="button" class="contour" id="bouton-annuler-recuperation">Annuler</button>
+
+      <p id="message-recuperation"></p>
+    </form>
+
   </div>
   </section>
+
+<section id="nouveau-mot-de-passe">
+  <div class="inscription">
+    <h2>Choisir un nouveau mot de passe</h2>
+    <p>Ce lien vous a été envoyé par email. Choisissez votre nouveau mot de passe ci-dessous.</p>
+
+    <form id="formulaire-nouveau-mot-de-passe">
+      <label for="nouveau-mdp-1">Nouveau mot de passe</label>
+      <input type="password" id="nouveau-mdp-1" minlength="6" required>
+
+      <label for="nouveau-mdp-2">Confirmez le nouveau mot de passe</label>
+      <input type="password" id="nouveau-mdp-2" minlength="6" required>
+
+      <button type="submit" class="primaire" id="bouton-nouveau-mdp">Enregistrer le nouveau mot de passe</button>
+      <p id="message-nouveau-mdp"></p>
+    </form>
+  </div>
+</section>
 
 <section id="decouvrir-aventures" class="section">
   <p class="sourcil">LA CHASSE</p>
@@ -867,6 +903,7 @@
   </p>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script>
 
 const SUPABASE_URL = "https://slvpdoovurqfykplefxe.supabase.co";
@@ -1439,6 +1476,30 @@ async function chargerPhotoProfil() {
 }
 
 // Envoie une nouvelle photo de profil (remplace l'ancienne)
+// Convertit une photo HEIC/HEIF (format des iPhone, illisible par la plupart des
+// navigateurs) en JPEG avant l'envoi, pour qu'elle s'affiche bien chez tous les membres.
+// Retourne le fichier tel quel s'il n'y a rien à convertir, ou null si la conversion échoue.
+async function convertirSiBesoin(file) {
+  const estHeic = /\.hei[cf]$/i.test(file.name) || file.type === "image/heic" || file.type === "image/heif";
+  if (!estHeic) return file;
+
+  if (typeof heic2any !== "function") {
+    alert("Cette photo est au format HEIC (iPhone) et n'a pas pu être convertie. Réessayez dans un instant, ou changez le format de la caméra dans Réglages > Appareil photo > Formats > « Le plus compatible ».");
+    return null;
+  }
+
+  try {
+    const resultat = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+    const blobConverti = Array.isArray(resultat) ? resultat[0] : resultat;
+    const nomConverti = file.name.replace(/\.hei[cf]$/i, "") + ".jpg";
+    return new File([blobConverti], nomConverti, { type: "image/jpeg" });
+  } catch (error) {
+    console.error("Conversion HEIC impossible :", error);
+    alert("Cette photo est au format HEIC (iPhone) et n'a pas pu être convertie automatiquement. Dans Réglages > Appareil photo > Formats de votre iPhone, choisissez « Le plus compatible » puis reprenez la photo.");
+    return null;
+  }
+}
+
 async function televerserPhotoProfil(file) {
   const token = localStorage.getItem("outdoor_access_token");
 
@@ -1446,6 +1507,9 @@ async function televerserPhotoProfil(file) {
     alert("Vous devez être connecté pour changer votre photo.");
     return;
   }
+
+  file = await convertirSiBesoin(file);
+  if (!file) return;
 
   const TAILLE_MAX = 10 * 1024 * 1024;
   if (file.size > TAILLE_MAX) {
@@ -1616,6 +1680,9 @@ async function televerserMedia(file, sousDossier) {
     return;
   }
 
+  file = await convertirSiBesoin(file);
+  if (!file) return;
+
   const TAILLE_MAX = 25 * 1024 * 1024;
   if (file.size > TAILLE_MAX) {
     alert("Le fichier est trop volumineux (25 Mo maximum).");
@@ -1779,6 +1846,132 @@ formulaireConnexion.addEventListener("submit", async function(e) {
       console.error(error);
 
       alert("Erreur de connexion : " + error.message);
+    }
+  });
+});
+
+// "Mot de passe oublié" : bascule entre le formulaire de connexion et celui de récupération
+document.getElementById("bouton-mot-de-passe-oublie").addEventListener("click", function() {
+  document.getElementById("formulaire-connexion").style.display = "none";
+  this.style.display = "none";
+  document.getElementById("formulaire-recuperation").style.display = "";
+});
+
+document.getElementById("bouton-annuler-recuperation").addEventListener("click", function() {
+  document.getElementById("formulaire-recuperation").style.display = "none";
+  document.getElementById("formulaire-connexion").style.display = "";
+  document.getElementById("bouton-mot-de-passe-oublie").style.display = "";
+  document.getElementById("message-recuperation").textContent = "";
+});
+
+document.getElementById("formulaire-recuperation").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const email = document.getElementById("email-recuperation").value.trim().toLowerCase();
+  const retour = document.getElementById("message-recuperation");
+  const bouton = this.querySelector('button[type="submit"]');
+  const formulaire = this;
+
+  await avecChargement(bouton, "Envoi en cours...", async function() {
+    try {
+      const urlRetour = window.location.origin + window.location.pathname;
+      const response = await fetch(
+        SUPABASE_URL + "/auth/v1/recover?redirect_to=" + encodeURIComponent(urlRetour),
+        {
+          method: "POST",
+          headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email })
+        }
+      );
+
+      if (!response.ok) {
+        retour.textContent = await lireMessageErreur(response, "Impossible d'envoyer l'email pour le moment. Réessayez plus tard.");
+        return;
+      }
+
+      // Supabase répond "ok" que l'email existe ou non (pour ne pas révéler les comptes existants)
+      retour.textContent = "Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé. Vérifiez aussi vos spams.";
+      formulaire.reset();
+
+    } catch (error) {
+      console.error(error);
+      retour.textContent = "Impossible d'envoyer l'email pour le moment. Réessayez plus tard.";
+    }
+  });
+});
+
+// Réinitialisation du mot de passe : le lien reçu par email ramène ici avec
+// un jeton dans l'URL (#access_token=...&type=recovery). On détecte ce jeton
+// dès le chargement de la page et on affiche le formulaire de nouveau mot de passe.
+function extraireJetonRecuperation() {
+  const fragment = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  const params = new URLSearchParams(fragment);
+  if (params.get("type") === "recovery" && params.get("access_token")) {
+    return { accessToken: params.get("access_token"), refreshToken: params.get("refresh_token") || "" };
+  }
+  return null;
+}
+
+(function gererLienRecuperation() {
+  const jeton = extraireJetonRecuperation();
+  if (!jeton) return;
+  window.jetonRecuperationCourant = jeton;
+  document.getElementById("nouveau-mot-de-passe").classList.add("actif");
+})();
+
+document.getElementById("formulaire-nouveau-mot-de-passe").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const mdp1 = document.getElementById("nouveau-mdp-1").value;
+  const mdp2 = document.getElementById("nouveau-mdp-2").value;
+  const retour = document.getElementById("message-nouveau-mdp");
+  const bouton = document.getElementById("bouton-nouveau-mdp");
+
+  if (mdp1.length < 6) {
+    retour.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
+    return;
+  }
+  if (mdp1 !== mdp2) {
+    retour.textContent = "Les deux mots de passe ne correspondent pas.";
+    return;
+  }
+  if (!window.jetonRecuperationCourant) {
+    retour.textContent = "Ce lien n'est plus valide. Refaites une demande de réinitialisation.";
+    return;
+  }
+
+  await avecChargement(bouton, "Enregistrement...", async function() {
+    try {
+      const response = await fetch(SUPABASE_URL + "/auth/v1/user", {
+        method: "PUT",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + window.jetonRecuperationCourant.accessToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ password: mdp1 })
+      });
+
+      if (!response.ok) {
+        retour.textContent = await lireMessageErreur(response, "Ce lien a peut-être expiré. Refaites une demande de réinitialisation.");
+        return;
+      }
+
+      const utilisateur = await response.json();
+
+      localStorage.setItem("outdoor_access_token", window.jetonRecuperationCourant.accessToken);
+      if (window.jetonRecuperationCourant.refreshToken) {
+        localStorage.setItem("outdoor_refresh_token", window.jetonRecuperationCourant.refreshToken);
+      }
+      window.jetonRecuperationCourant = null;
+
+      document.getElementById("nouveau-mot-de-passe").classList.remove("actif");
+      mettreAJourNavigation(true);
+      await afficherProfil(localStorage.getItem("outdoor_access_token"), utilisateur.email, utilisateur.id);
+      history.replaceState(null, "", window.location.pathname + "#espace-membre");
+      alert("Mot de passe mis à jour, vous êtes maintenant connecté(e).");
+
+    } catch (error) {
+      console.error(error);
+      retour.textContent = "Erreur lors de l'enregistrement. Réessayez.";
     }
   });
 });
