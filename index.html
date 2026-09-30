@@ -1867,6 +1867,28 @@ formulaires.forEach(function(config) {
 
 // Récupère le profil et l'affiche dans la page
 const NOM_BUCKET_MEDIAS = "medias-profil";
+
+// Les NOUVELLES photos et vidéos sont stockées sur Cloudflare R2, via la fonction
+// serveur « medias-r2 » (elle vérifie les droits et fournit des liens temporaires).
+// Les anciens fichiers restent lisibles depuis Supabase.
+async function appelMediasR2(corps) {
+  const token = localStorage.getItem("outdoor_access_token");
+  const reponse = await fetch(SUPABASE_URL + "/functions/v1/medias-r2", {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify(corps)
+  });
+  const donnees = await reponse.json().catch(function() { return {}; });
+  if (!reponse.ok) throw new Error(donnees.error || ("Erreur " + reponse.status));
+  return donnees;
+}
+
+async function envoyerVersR2(section, file) {
+  const type = file.type || (/\.(mp4|mov|m4v|webm|3gp)$/i.test(file.name) ? "video/mp4" : "image/jpeg");
+  const { url } = await appelMediasR2({ action: "upload", section: section, nom: file.name, type: type, taille: file.size });
+  const reponse = await fetch(url, { method: "PUT", headers: { "Content-Type": type }, body: file });
+  if (!reponse.ok) throw new Error("Échec de l'envoi (" + reponse.status + ")");
+}
 let idUtilisateurCourant = null;
 
 // Visionneuse plein écran : agrandit une photo au clic (avatars, albums...)
@@ -2101,6 +2123,14 @@ async function chargerPhotoProfil() {
   if (!token || !idUtilisateurCourant) return;
 
   try {
+    const urlR2 = await signerFichierR2(cheminPhotoProfil());
+    if (urlR2) {
+      img.src = urlR2;
+      img.style.display = "";
+      placeholder.style.display = "none";
+      return;
+    }
+
     const signResponse = await fetch(
       SUPABASE_URL + "/storage/v1/object/sign/" + NOM_BUCKET_MEDIAS + "/" + cheminPhotoProfil(),
       {
@@ -2214,25 +2244,7 @@ async function televerserPhotoProfil(file) {
   }
 
   try {
-    const response = await fetch(
-      SUPABASE_URL + "/storage/v1/object/" + NOM_BUCKET_MEDIAS + "/" + cheminPhotoProfil(),
-      {
-        method: "POST",
-        headers: {
-          "apikey": SUPABASE_KEY,
-          "Authorization": "Bearer " + token,
-          "Content-Type": file.type || "image/jpeg",
-          "x-upsert": "true"
-        },
-        body: file
-      }
-    );
-
-    if (!response.ok) {
-      const erreur = await response.text();
-      throw new Error(erreur || "Échec de l'envoi");
-    }
-
+    await envoyerVersR2("profil", file);
     await chargerPhotoProfil();
 
   } catch (error) {
@@ -2281,30 +2293,36 @@ async function chargerAlbum(userId, sousDossier, conteneurId, afficherActions) {
   conteneur.innerHTML = '<p class="chargement">Chargement...</p>';
 
   try {
-    const listeResponse = await fetch(
-      SUPABASE_URL + "/storage/v1/object/list/" + NOM_BUCKET_MEDIAS,
-      {
-        method: "POST",
-        headers: {
-          "apikey": SUPABASE_KEY,
-          "Authorization": "Bearer " + token,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          prefix: cheminAlbum(userId, sousDossier),
-          limit: 100,
-          sortBy: { column: "created_at", order: "desc" }
-        })
-      }
-    );
+    // Nouveaux fichiers (R2) puis anciens (Supabase). Si l'un des deux échoue, l'autre s'affiche quand même.
+    const resultats = await Promise.all([
+      appelMediasR2({ action: "list", owner: userId, section: sousDossier }).then(function(d) {
+        return (d.fichiers || []).map(function(f) { return { name: f.nom, source: "r2", url: f.url, estVideo: f.video }; });
+      }).catch(function(e) { console.error("R2 :", e); return null; }),
+      fetch(
+        SUPABASE_URL + "/storage/v1/object/list/" + NOM_BUCKET_MEDIAS,
+        {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            prefix: cheminAlbum(userId, sousDossier),
+            limit: 100,
+            sortBy: { column: "created_at", order: "desc" }
+          })
+        }
+      ).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; })
+    ]);
 
-    if (!listeResponse.ok) {
+    if (resultats[0] === null && resultats[1] === null) {
       throw new Error("Impossible de charger l'album");
     }
 
-    const fichiers = (await listeResponse.json()).filter(function(f) {
+    const fichiers = (resultats[0] || []).concat((resultats[1] || []).filter(function(f) {
       return f.id !== null;
-    });
+    }));
 
     if (fichiers.length === 0) {
       conteneur.innerHTML = "<p>Aucune photo ou vidéo pour le moment.</p>";
@@ -2327,25 +2345,32 @@ async function chargerAlbum(userId, sousDossier, conteneurId, afficherActions) {
 // Génère une URL signée temporaire et la vignette (image ou vidéo) associée
 async function creerVignetteMedia(fichier, token, userId, sousDossier, afficherActions) {
   const chemin = cheminAlbum(userId, sousDossier) + fichier.name;
-  const estVideo = ((fichier.metadata && fichier.metadata.mimetype) || "").startsWith("video/");
+  const estVideo = fichier.source === "r2"
+    ? !!fichier.estVideo
+    : ((fichier.metadata && fichier.metadata.mimetype) || "").startsWith("video/");
 
-  const signResponse = await fetch(
-    SUPABASE_URL + "/storage/v1/object/sign/" + NOM_BUCKET_MEDIAS + "/" + chemin,
-    {
-      method: "POST",
-      headers: {
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + token,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ expiresIn: 3600 })
-    }
-  );
+  let urlMedia;
+  if (fichier.source === "r2") {
+    urlMedia = fichier.url;
+  } else {
+    const signResponse = await fetch(
+      SUPABASE_URL + "/storage/v1/object/sign/" + NOM_BUCKET_MEDIAS + "/" + chemin,
+      {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ expiresIn: 3600 })
+      }
+    );
 
-  if (!signResponse.ok) return null;
+    if (!signResponse.ok) return null;
 
-  const { signedURL } = await signResponse.json();
-  const urlMedia = SUPABASE_URL + (signedURL.startsWith("/storage/v1") ? signedURL : "/storage/v1" + signedURL);
+    const { signedURL } = await signResponse.json();
+    urlMedia = SUPABASE_URL + (signedURL.startsWith("/storage/v1") ? signedURL : "/storage/v1" + signedURL);
+  }
 
   const vignette = document.createElement("div");
   vignette.className = "media-galerie";
@@ -2365,7 +2390,7 @@ async function creerVignetteMedia(fichier, token, userId, sousDossier, afficherA
     boutonSupprimer.className = "contour bouton-supprimer-media";
     boutonSupprimer.textContent = "Supprimer";
     boutonSupprimer.addEventListener("click", function() {
-      supprimerMedia(fichier.name, sousDossier);
+      supprimerMedia(fichier.name, sousDossier, fichier.source);
     });
     vignette.appendChild(boutonSupprimer);
   }
@@ -2537,30 +2562,11 @@ async function televerserMedia(file, sousDossier) {
     return;
   }
 
-  const nomNettoye = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-  const chemin = cheminAlbum(idUtilisateurCourant, sousDossier) + Date.now() + "-" + nomNettoye;
   const idConteneur = sousDossier === "public" ? "galerie-medias-public" : "galerie-medias-prive";
 
   await avecChargement(bouton, "Envoi en cours...", async function() {
     try {
-      const response = await fetch(
-        SUPABASE_URL + "/storage/v1/object/" + NOM_BUCKET_MEDIAS + "/" + chemin,
-        {
-          method: "POST",
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": "Bearer " + token,
-            "Content-Type": file.type || "application/octet-stream"
-          },
-          body: file
-        }
-      );
-
-      if (!response.ok) {
-        const erreur = await response.text();
-        throw new Error(erreur || "Échec de l'envoi");
-      }
-
+      await envoyerVersR2(sousDossier, file);
       await chargerAlbum(idUtilisateurCourant, sousDossier, idConteneur, true);
 
     } catch (error) {
@@ -2571,7 +2577,7 @@ async function televerserMedia(file, sousDossier) {
 }
 
 // Supprime un média de son propre album (public ou privé)
-async function supprimerMedia(nomFichier, sousDossier) {
+async function supprimerMedia(nomFichier, sousDossier, source) {
   const token = localStorage.getItem("outdoor_access_token");
 
   if (!token || !idUtilisateurCourant) return;
@@ -2581,19 +2587,23 @@ async function supprimerMedia(nomFichier, sousDossier) {
   const idConteneur = sousDossier === "public" ? "galerie-medias-public" : "galerie-medias-prive";
 
   try {
-    const response = await fetch(
-      SUPABASE_URL + "/storage/v1/object/" + NOM_BUCKET_MEDIAS + "/" + chemin,
-      {
-        method: "DELETE",
-        headers: {
-          "apikey": SUPABASE_KEY,
-          "Authorization": "Bearer " + token
+    if (source === "r2") {
+      await appelMediasR2({ action: "delete", section: sousDossier, nom: nomFichier });
+    } else {
+      const response = await fetch(
+        SUPABASE_URL + "/storage/v1/object/" + NOM_BUCKET_MEDIAS + "/" + chemin,
+        {
+          method: "DELETE",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": "Bearer " + token
+          }
         }
-      }
-    );
+      );
 
-    if (!response.ok) {
-      throw new Error("Échec de la suppression");
+      if (!response.ok) {
+        throw new Error("Échec de la suppression");
+      }
     }
 
     await chargerAlbum(idUtilisateurCourant, sousDossier, idConteneur, true);
@@ -3624,9 +3634,19 @@ async function appliquerFiltre() {
 }
 
 // Retourne l'URL signée d'un fichier du bucket médias, ou null s'il n'existe pas / n'est pas accessible
+async function signerFichierR2(chemin) {
+  try {
+    return (await appelMediasR2({ action: "sign", cle: chemin })).url || null;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function signerFichierMedia(chemin) {
   const token = localStorage.getItem("outdoor_access_token");
   if (!token) return null;
+  const urlR2 = await signerFichierR2(chemin);
+  if (urlR2) return urlR2;
   try {
     const signResponse = await fetch(
       SUPABASE_URL + "/storage/v1/object/sign/" + NOM_BUCKET_MEDIAS + "/" + chemin,
