@@ -162,6 +162,11 @@
       width: 40px; height: 40px; font-size: 1.1em; cursor: pointer;
     }
     .avatar-annuaire, .media-galerie img { cursor: zoom-in; }
+    /* Albums : vignettes à taille fixe (clic = photo en grand) */
+    .media-galerie { display: inline-block; vertical-align: top; margin: 6px; max-width: 100%; text-align: center; }
+    .media-galerie img { width: 200px; height: 200px; max-width: 100%; object-fit: cover; border-radius: 8px; display: block; }
+    .media-galerie video { width: 260px; max-width: 100%; border-radius: 8px; display: block; }
+    .media-galerie .bouton-supprimer-media { margin-top: 6px; }
     .aide-champ { font-size: .85em; opacity: .75; margin: 4px 0 12px; }
     .a-completer { background: #f1c40f; color: #111; padding: 0 4px; border-radius: 3px; }
     section.page-legale { display: none; }
