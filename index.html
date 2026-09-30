@@ -103,6 +103,12 @@
     section.page-seule { display: none; }
     body.plein-ecran section.page-seule.vue-plein-ecran { display: block; }
     .actes-carte { display: flex; gap: 10px; flex-wrap: wrap; }
+    .demandes-album { margin-top: 18px; padding-top: 12px; border-top: 1px solid #3d2448; }
+    .demandes-album h4 { margin: 0 0 10px; }
+    .ligne-demande { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .ligne-demande .boutons { display: flex; gap: 6px; }
+    .ligne-demande button { padding: 6px 12px; font-size: 14px; }
+    .bouton-album-prive[disabled] { opacity: .6; cursor: default; }
     .filtres-aventures { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
     .filtres-aventures button { padding: 8px 12px; font-size: 14px; }
     .filtres-aventures button.actif { background: #ff4fd8; color: #0b0710; border-color: #ff4fd8; }
@@ -277,13 +283,18 @@
 
   <div class="section-galerie">
     <h3>Album privé</h3>
-    <p>Visible uniquement par vous.</p>
+    <p>Visible uniquement par vous et les membres à qui vous en donnez l'accès.</p>
 
     <input type="file" id="input-media-prive" accept="image/*,video/*" style="display:none;">
     <button type="button" class="primaire" id="bouton-ajouter-media-prive">+ Ajouter une photo/vidéo</button>
     <button type="button" class="contour" id="bouton-prendre-photo-prive">📷 Prendre une photo</button>
 
     <div id="galerie-medias-prive"></div>
+
+    <div class="demandes-album">
+      <h4>Demandes d'accès à mon album privé</h4>
+      <div id="liste-demandes-album"><p class="aide-champ">Aucune demande pour l'instant.</p></div>
+    </div>
   </div>
 
 
@@ -1190,7 +1201,7 @@
     Le site En Plein Air est édité par CLAIRICIA Samuel,
     particulier,
     82 rue de Verdun, 94500 Champigny-sur-Marne, France.<br>
-    Contact : <a href="mailto:contact@enpleinairs.fr">contact@enpleinairs.fr</a> ou via le formulaire
+    Contact : <a href="mailto:clairsam972@gmail.com">clairsam972@gmail.com</a> ou via le formulaire
     « <a href="#rapport">Signaler un problème</a> ».<br>
     Directrice de la publication : CLAIRICIA Samuel.
   </p>
@@ -1266,13 +1277,13 @@
   <h2>Politique de confidentialité</h2>
 
   <h3>Responsable du traitement</h3>
-  <p>CLAIRICIA Samuel — contact : <a href="mailto:contact@enpleinairs.fr">contact@enpleinairs.fr</a>.</p>
+  <p>CLAIRICIA Samuel — contact : <a href="mailto:clairsam972@gmail.com">clairsam972@gmail.com</a>.</p>
 
   <h3>Données collectées et pourquoi</h3>
   <ul>
     <li><strong>Compte :</strong> email, mot de passe (chiffré), pseudonyme, type de profil, ville, présentation, ce que vous recherchez — pour faire fonctionner votre compte et l'annuaire.</li>
     <li><strong>Localisation :</strong> coordonnées approximatives de votre ville, jamais montrées aux autres membres (seule la distance en km est affichée).</li>
-    <li><strong>Photos et vidéos :</strong> l'album public et la photo de profil sont visibles des membres connectés ; l'album privé n'est visible que par vous. L'équipe de modération peut consulter tous les albums pour retirer les contenus interdits.</li>
+    <li><strong>Photos et vidéos :</strong> l'album public et la photo de profil sont visibles des membres connectés ; l'album privé n'est visible que par vous et par les membres à qui vous en avez accordé l'accès (vous pouvez le retirer à tout moment). L'équipe de modération peut consulter tous les albums pour retirer les contenus interdits.</li>
     <li><strong>Messages, histoires, signalements, blocages :</strong> pour les échanges entre membres et la sécurité de la communauté.</li>
     <li><strong>Paiements :</strong> traités par Stripe ; nous ne conservons que l'identifiant client et l'état de l'abonnement.</li>
     <li><strong>Âge :</strong> votre date de naissance (pour un couple, celle de la personne la plus jeune) et la date à laquelle vous avez certifié avoir 18 ans ou plus — uniquement pour vérifier que le site est réservé aux adultes. Elle n'est jamais montrée aux autres membres.</li>
@@ -1303,8 +1314,7 @@
   <p>Adultes uniquement • Respect • Sécurité</p>
   <p class="liens-footer">
     <a href="#securite">Sécurité</a> · <a href="#rapport">Signaler un problème</a><br>
-    <a href="#mentions-legales">Mentions légales</a> · <a href="#cgu">CGU / CGV</a> · <a href="#confidentialite">Confidentialité</a><br>
-    <a href="mailto:contact@enpleinairs.fr">contact@enpleinairs.fr</a>
+    <a href="#mentions-legales">Mentions légales</a> · <a href="#cgu">CGU / CGV</a> · <a href="#confidentialite">Confidentialité</a>
   </p>
 </footer>
 
@@ -1847,6 +1857,7 @@ async function afficherProfil(accessToken, userEmail, userId) {
   chargerHistoires();
   mettreAJourBadgeMessages();
   chargerBlocages();
+  chargerDemandesAlbum();
 }
 
 // Membres inscrits avant la date de naissance obligatoire : on la demande une fois
@@ -3268,6 +3279,8 @@ async function deconnexion() {
   document.getElementById("formulaire-changer-mdp").style.display = "none";
   document.getElementById("verification-age").classList.remove("actif");
   document.getElementById("carte-supprimer-compte").open = false;
+  document.getElementById("liste-demandes-album").innerHTML = '<p class="aide-champ">Aucune demande pour l\'instant.</p>';
+  promesseStatutsAlbums = null;
   window.monProfilCourant = null;
   document.getElementById("photo-principale").style.display = "none";
   document.getElementById("placeholder-photo").style.display = "";
@@ -3398,7 +3411,79 @@ async function signerFichierMedia(chemin) {
   }
 }
 
+// Statuts de mes demandes d'accès aux albums privés (une requête par affichage de l'annuaire)
+let promesseStatutsAlbums = null;
+function statutsAlbumsPrives() {
+  if (!promesseStatutsAlbums) {
+    promesseStatutsAlbums = fetch(
+      SUPABASE_URL + "/rest/v1/acces_album?select=proprietaire,statut&demandeur=eq." + idUtilisateurCourant,
+      { headers: enTetesMembre() }
+    ).then(function(r) { return r.ok ? r.json() : []; }).then(function(lignes) {
+      const statuts = {};
+      lignes.forEach(function(l) { statuts[l.proprietaire] = l.statut; });
+      return statuts;
+    }).catch(function() { return {}; });
+  }
+  return promesseStatutsAlbums;
+}
+
+// Demandes reçues pour mon album privé (dans « Mon profil »)
+async function chargerDemandesAlbum() {
+  const liste = document.getElementById("liste-demandes-album");
+  try {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/demandes_album_recues", {
+      method: "POST", headers: enTetesMembre(), body: "{}"
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const demandes = await response.json();
+    liste.innerHTML = "";
+    if (demandes.length === 0) {
+      liste.innerHTML = '<p class="aide-champ">Aucune demande pour l\'instant.</p>';
+      return;
+    }
+    demandes.forEach(function(d) {
+      const ligne = document.createElement("div");
+      ligne.className = "ligne-demande";
+      const nom = document.createElement("span");
+      nom.textContent = (d.pseudo || "Membre") + (d.statut === "accepte" ? " — accès accordé 🔓" : " — en attente");
+      const boutons = document.createElement("div");
+      boutons.className = "boutons";
+      function bouton(texte, classe, action) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = classe; b.textContent = texte;
+        b.addEventListener("click", async function() {
+          b.disabled = true;
+          try { await action(); } catch (e) { alert(e.message); }
+          chargerDemandesAlbum();
+        });
+        boutons.appendChild(b);
+      }
+      async function appeler(fonction, corps) {
+        const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fonction, {
+          method: "POST", headers: enTetesMembre(), body: JSON.stringify(corps)
+        });
+        if (!r.ok) { const e = await r.json().catch(function() { return {}; }); throw new Error(e.message || "Action impossible."); }
+      }
+      if (d.statut === "en_attente") {
+        bouton("Accepter", "primaire", function() { return appeler("repondre_acces_album", { p_demandeur: d.demandeur, p_accepter: true }); });
+        bouton("Refuser", "contour", function() { return appeler("repondre_acces_album", { p_demandeur: d.demandeur, p_accepter: false }); });
+      } else {
+        bouton("Retirer l'accès", "contour", function() {
+          if (!confirm("Retirer l'accès de " + (d.pseudo || "ce membre") + " à votre album privé ?")) return Promise.resolve();
+          return appeler("retirer_acces_album", { p_autre: d.demandeur });
+        });
+      }
+      ligne.append(nom, boutons);
+      liste.appendChild(ligne);
+    });
+  } catch (error) {
+    console.error(error);
+    liste.innerHTML = '<p class="aide-champ">Impossible de charger les demandes.</p>';
+  }
+}
+
 function afficherResultatsAnnuaire(profils) {
+  promesseStatutsAlbums = null;
   const container = document.getElementById("liste-profils");
   container.innerHTML = "";
 
@@ -3462,6 +3547,53 @@ function afficherResultatsAnnuaire(profils) {
     });
     carte.appendChild(boutonAlbum);
     carte.appendChild(conteneurAlbum);
+
+    // Album privé : demande d'accès, puis consultation une fois accepté
+    const idAlbumPrive = "album-prive-" + p.user_id;
+    const conteneurPrive = document.createElement("div");
+    conteneurPrive.id = idAlbumPrive;
+    conteneurPrive.style.display = "none";
+    const boutonPrive = document.createElement("button");
+    boutonPrive.type = "button";
+    boutonPrive.className = "contour bouton-album-prive";
+    boutonPrive.textContent = "🔒 Demander l'accès à l'album privé";
+    let priveCharge = false;
+    function majBoutonPrive(statut) {
+      boutonPrive.dataset.statut = statut || "";
+      boutonPrive.disabled = statut === "en_attente";
+      boutonPrive.textContent =
+        statut === "accepte" ? "🔓 Voir l'album privé" :
+        statut === "en_attente" ? "⏳ Demande d'accès envoyée" :
+        "🔒 Demander l'accès à l'album privé";
+    }
+    statutsAlbumsPrives().then(function(statuts) { majBoutonPrive(statuts[p.user_id]); });
+    boutonPrive.addEventListener("click", async function() {
+      if (boutonPrive.dataset.statut === "accepte") {
+        const visible = conteneurPrive.style.display !== "none";
+        conteneurPrive.style.display = visible ? "none" : "";
+        boutonPrive.textContent = visible ? "🔓 Voir l'album privé" : "Masquer l'album privé";
+        if (!visible && !priveCharge) {
+          priveCharge = true;
+          chargerAlbum(p.user_id, "prive", idAlbumPrive, false);
+        }
+        return;
+      }
+      boutonPrive.disabled = true;
+      try {
+        const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/demander_acces_album", {
+          method: "POST", headers: enTetesMembre(), body: JSON.stringify({ p_proprietaire: p.user_id })
+        });
+        const resultat = await response.json();
+        if (!response.ok) throw new Error(resultat.message || "Demande impossible.");
+        majBoutonPrive(resultat);
+        if (resultat === "en_attente") afficherAlerte("Demande envoyée à " + (p.Pseudonyme || "ce membre") + " ✅", "info");
+      } catch (error) {
+        boutonPrive.disabled = false;
+        alert(error.message);
+      }
+    });
+    carte.appendChild(boutonPrive);
+    carte.appendChild(conteneurPrive);
 
     const bouton = document.createElement("button");
     bouton.type = "button";
