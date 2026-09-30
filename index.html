@@ -103,6 +103,12 @@
     section.page-seule { display: none; }
     body.plein-ecran section.page-seule.vue-plein-ecran { display: block; }
     .actes-carte { display: flex; gap: 10px; flex-wrap: wrap; }
+    .bandeau-verification { border-color: #f1c40f; }
+    .bandeau-verification.refuse { border-color: #e74c3c; }
+    .moderation-verif { margin-bottom: 28px; }
+    .ligne-verif { border: 1px solid #3d2448; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .ligne-verif p { margin: 4px 0; }
+    .ligne-verif .boutons { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
     .demandes-album { margin-top: 18px; padding-top: 12px; border-top: 1px solid #3d2448; }
     .demandes-album h4 { margin: 0 0 10px; }
     .ligne-demande { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
@@ -208,6 +214,27 @@
 <main>
 
 <section id="espace-membre" class="section">
+
+  <div class="carte bandeau-verification" id="bandeau-verification" style="display:none;">
+    <p id="texte-verification"></p>
+    <form id="formulaire-documents" style="display:none;">
+      <div id="champ-renvoi-piece" style="display:none;">
+        <label for="renvoi-piece-1">Pièce d'identité</label>
+        <input type="file" id="renvoi-piece-1" class="piece-identite" data-numero="1" accept="image/*,.heic,.heif,application/pdf">
+        <div id="champ-renvoi-piece-2" style="display:none;">
+          <label for="renvoi-piece-2">Pièce d'identité — personne 2</label>
+          <input type="file" id="renvoi-piece-2" class="piece-identite" data-numero="2" accept="image/*,.heic,.heif,application/pdf">
+        </div>
+      </div>
+      <div id="champ-renvoi-couple" style="display:none;">
+        <label for="renvoi-photo-couple">Photo de vous deux ensemble</label>
+        <input type="file" id="renvoi-photo-couple" class="photo-couple" accept="image/*,.heic,.heif">
+      </div>
+    <p class="aide-champ">🔐 Uniquement pour vérifier la majorité. Ces documents ne sont jamais visibles sur le site : ils sont contrôlés par l'administratrice puis supprimés définitivement.</p>
+      <button type="submit" class="primaire" id="bouton-envoyer-documents">Envoyer mes documents</button>
+      <p id="message-documents"></p>
+    </form>
+  </div>
 
   <div class="profil-header">
     <div class="profil-photo-principale">
@@ -731,6 +758,15 @@
     <input type="date" class="date-naissance" required>
     <p class="aide-champ">Réservé aux 18 ans et plus. Votre date de naissance n'est jamais montrée aux autres membres.</p>
 
+    <label>Pièce d'identité — personne 1 (carte d'identité, passeport ou permis)</label>
+    <input type="file" class="piece-identite" data-numero="1" accept="image/*,.heic,.heif,application/pdf" required>
+    <label>Pièce d'identité — personne 2</label>
+    <input type="file" class="piece-identite" data-numero="2" accept="image/*,.heic,.heif,application/pdf" required>
+    <label>Photo de vous deux ensemble</label>
+    <input type="file" class="photo-couple" accept="image/*,.heic,.heif" required>
+    <p class="aide-champ">🔐 Uniquement pour vérifier la majorité. Ces documents ne sont jamais visibles sur le site : ils sont contrôlés par l'administratrice puis supprimés définitivement.</p>
+
+
     <label>
       <input type="checkbox" class="case-majeur" required>
       Nous certifions avoir tous les deux 18 ans ou plus et acceptons les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
@@ -783,6 +819,11 @@
     <label>Date de naissance</label>
     <input type="date" class="date-naissance" required>
     <p class="aide-champ">Réservé aux 18 ans et plus. Votre date de naissance n'est jamais montrée aux autres membres.</p>
+
+    <label>Pièce d'identité (carte d'identité, passeport ou permis de conduire)</label>
+    <input type="file" class="piece-identite" data-numero="1" accept="image/*,.heic,.heif,application/pdf" required>
+    <p class="aide-champ">🔐 Uniquement pour vérifier la majorité. Ces documents ne sont jamais visibles sur le site : ils sont contrôlés par l'administratrice puis supprimés définitivement.</p>
+
 
     <label>
       <input type="checkbox" class="case-majeur" required>
@@ -840,6 +881,11 @@
     <input type="date" class="date-naissance" required>
     <p class="aide-champ">Réservé aux 18 ans et plus. Votre date de naissance n'est jamais montrée aux autres membres.</p>
 
+    <label>Pièce d'identité (carte d'identité, passeport ou permis de conduire)</label>
+    <input type="file" class="piece-identite" data-numero="1" accept="image/*,.heic,.heif,application/pdf" required>
+    <p class="aide-champ">🔐 Uniquement pour vérifier la majorité. Ces documents ne sont jamais visibles sur le site : ils sont contrôlés par l'administratrice puis supprimés définitivement.</p>
+
+
     <label>
       <input type="checkbox" class="case-majeur" required>
       Je certifie avoir 18 ans ou plus et j'accepte les <a href="#cgu">conditions générales</a> et la <a href="#confidentialite">politique de confidentialité</a>.
@@ -895,6 +941,11 @@
     <label>Date de naissance</label>
     <input type="date" class="date-naissance" required>
     <p class="aide-champ">Réservé aux 18 ans et plus. Votre date de naissance n'est jamais montrée aux autres membres.</p>
+
+    <label>Pièce d'identité (carte d'identité, passeport ou permis de conduire)</label>
+    <input type="file" class="piece-identite" data-numero="1" accept="image/*,.heic,.heif,application/pdf" required>
+    <p class="aide-champ">🔐 Uniquement pour vérifier la majorité. Ces documents ne sont jamais visibles sur le site : ils sont contrôlés par l'administratrice puis supprimés définitivement.</p>
+
 
     <label>
       <input type="checkbox" class="case-majeur" required>
@@ -1065,6 +1116,14 @@
     <option value="50">50 km</option>
     <option value="100">100 km</option>
   </select>
+  <label for="type-filtre">Je recherche :</label>
+  <select id="type-filtre">
+    <option value="">Tout le monde</option>
+    <option value="homme">👨 Hommes</option>
+    <option value="femme">👩 Femmes</option>
+    <option value="couple">👫 Couples</option>
+    <option value="trans">🏳️‍⚧️ Personnes trans</option>
+  </select>
   <button type="button" class="primaire" onclick="appliquerFiltre()">Rechercher</button>
 
   <div id="liste-profils"></div>
@@ -1115,6 +1174,12 @@
     <a class="primaire" href="#espace-membre">Retour à mon profil</a>
   </div>
   <div id="moderation-zone" style="display:none;">
+    <div class="moderation-verif">
+      <h3>Vérifications d'identité en attente</h3>
+      <p class="aide-champ">Les documents ne sont jamais affichés sur le site. Consultez-les dans Supabase → Storage → <strong>verifications</strong> → dossier du membre (identifiant ci-dessous), puis validez ou refusez ici. Les documents sont alors supprimés automatiquement.</p>
+      <div id="liste-verifications"><p>Chargement...</p></div>
+    </div>
+    <h3>Albums des membres</h3>
     <div id="moderation-liste-membres"><p>Chargement des membres...</p></div>
   </div>
   <a class="contour" href="#espace-membre">Retour à mon profil</a>
@@ -1231,7 +1296,7 @@
   <p>Les présentes conditions encadrent l'utilisation du site En Plein Air, communauté de rencontres et d'aventures en plein air entre adultes consentants, ainsi que la vente de l'abonnement et des jokers.</p>
 
   <h3>2. Inscription</h3>
-  <p>L'inscription est gratuite et réservée aux personnes de 18 ans et plus. En s'inscrivant, le membre indique sa date de naissance, certifie être majeur, fournir des informations exactes et être seul utilisateur de son compte. Un seul compte par personne ou par couple.</p>
+  <p>L'inscription est gratuite et réservée aux personnes de 18 ans et plus. En s'inscrivant, le membre indique sa date de naissance, fournit une pièce d'identité (et, pour un couple, une pièce d'identité de chacun et une photo des deux ensemble) afin que sa majorité soit vérifiée, certifie être majeur, fournir des informations exactes et être seul utilisateur de son compte. Un seul compte par personne ou par couple.</p>
 
   <h3>3. Règles de conduite</h3>
   <p>Chaque membre s'engage à :</p>
@@ -1286,6 +1351,7 @@
     <li><strong>Photos et vidéos :</strong> l'album public et la photo de profil sont visibles des membres connectés ; l'album privé n'est visible que par vous et par les membres à qui vous en avez accordé l'accès (vous pouvez le retirer à tout moment). L'équipe de modération peut consulter tous les albums pour retirer les contenus interdits.</li>
     <li><strong>Messages, histoires, signalements, blocages :</strong> pour les échanges entre membres et la sécurité de la communauté.</li>
     <li><strong>Paiements :</strong> traités par Stripe ; nous ne conservons que l'identifiant client et l'état de l'abonnement.</li>
+    <li><strong>Vérification d'identité (nouveaux inscrits) :</strong> une copie de pièce d'identité et, pour les couples, une photo des deux personnes ensemble. Ces documents servent uniquement à vérifier la majorité, ne sont jamais affichés sur le site ni visibles des membres, sont consultés par l'administratrice seule et supprimés définitivement dès la vérification faite.</li>
     <li><strong>Âge :</strong> votre date de naissance (pour un couple, celle de la personne la plus jeune) et la date à laquelle vous avez certifié avoir 18 ans ou plus — uniquement pour vérifier que le site est réservé aux adultes. Elle n'est jamais montrée aux autres membres.</li>
   </ul>
   <p>Certaines de ces informations (préférences de rencontre, photos) peuvent révéler votre vie intime : elles ne sont utilisées que pour le fonctionnement du site, jamais vendues ni transmises à des fins publicitaires.</p>
@@ -1705,6 +1771,13 @@ formulaires.forEach(function(config) {
     const champRecherche = bloc.querySelector('select[name="recherche"]');
     const recherche = champRecherche ? champRecherche.value : "";
 
+    // Documents de vérification : présents et pas trop lourds
+    const documents = collecterDocumentsVerification(bloc);
+    if (documents.erreur) {
+      alert(documents.erreur);
+      return;
+    }
+
     // Contrôle de l'âge avant même de créer le compte
     const dateNaissance = bloc.querySelector(".date-naissance").value;
     const age = calculerAge(dateNaissance);
@@ -1778,7 +1851,10 @@ formulaires.forEach(function(config) {
           throw new Error(erreur);
         }
 
-        alert("Inscription enregistrée avec succès !");
+        const envoiOk = await envoyerDocumentsVerification(documents.fichiers, userId, authData.access_token);
+        alert(envoiOk
+          ? "Inscription enregistrée ! 🎉 Votre compte sera activé dès que l'administratrice aura vérifié vos documents. Vous pouvez déjà vous connecter pour compléter votre profil."
+          : "Inscription enregistrée, mais l'envoi de vos documents a échoué. Connectez-vous : vous pourrez les renvoyer depuis votre profil.");
         formulaire.reset();
 
       } catch (error) {
@@ -1845,6 +1921,7 @@ async function afficherProfil(accessToken, userEmail, userId) {
 
   window.monProfilCourant = profil;
   document.getElementById("verification-age").classList.toggle("actif", !profil.date_naissance);
+  afficherStatutVerification(profil);
   afficherStatutAbonnement(profil);
   document.getElementById("case-notif-email").checked = !!profil.notif_email;
   document.getElementById("message-notif-email").textContent = "";
@@ -2296,6 +2373,145 @@ async function creerVignetteMedia(fichier, token, userId, sousDossier, afficherA
   return vignette;
 }
 
+// ---------- Vidéos ----------
+// Limite de Supabase (offre gratuite) : 50 Mo par fichier. Une vidéo de téléphone
+// pèse environ 3 Mo par seconde : au-delà, on la recompresse dans le navigateur
+// (720p, débit adapté à la durée) pour accepter jusqu'à 3 minutes.
+const TAILLE_MAX_MEDIA = 50 * 1024 * 1024;
+const TAILLE_CIBLE_VIDEO = 44 * 1024 * 1024;
+const DUREE_MAX_VIDEO = 180;
+
+function lireDureeVideo(file) {
+  return new Promise(function(resolve) {
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = function() { resolve(isFinite(v.duration) ? v.duration : null); URL.revokeObjectURL(v.src); };
+    v.onerror = function() { resolve(null); };
+    v.src = URL.createObjectURL(file);
+  });
+}
+
+async function preparerVideo(file, bouton) {
+  const duree = await lireDureeVideo(file);
+  if (duree && duree > DUREE_MAX_VIDEO + 1) {
+    alert("La vidéo dure " + Math.round(duree) + " s : 3 minutes maximum. Raccourcissez-la avec l'éditeur de votre téléphone puis réessayez.");
+    return null;
+  }
+  if (file.size <= TAILLE_CIBLE_VIDEO) return file; // assez légère : envoyée telle quelle
+
+  const texteInitial = bouton ? bouton.textContent : "";
+  try {
+    if (bouton) { bouton.disabled = true; bouton.textContent = "Compression de la vidéo… 0 %"; }
+    const compressee = await compresserVideo(file, duree, function(pourcent) {
+      if (bouton) bouton.textContent = "Compression de la vidéo… " + pourcent + " %";
+    });
+    if (compressee && compressee.size <= TAILLE_MAX_MEDIA) return compressee;
+    alert("Impossible d'alléger suffisamment cette vidéo. Essayez une vidéo plus courte (50 Mo maximum).");
+    return null;
+  } catch (error) {
+    console.error("Compression vidéo :", error);
+    alert(file.size > TAILLE_MAX_MEDIA
+      ? "Cette vidéo est trop lourde (50 Mo maximum) et votre navigateur ne peut pas la compresser. Raccourcissez-la ou filmez en qualité 720p/1080p, puis réessayez."
+      : "Compression impossible, la vidéo est envoyée telle quelle.");
+    return file.size > TAILLE_MAX_MEDIA ? null : file;
+  } finally {
+    if (bouton) { bouton.disabled = false; bouton.textContent = texteInitial; }
+  }
+}
+
+// Réencode la vidéo en la rejouant dans un canvas (lecture en temps réel :
+// une vidéo d'une minute prend environ une minute à compresser).
+function compresserVideo(file, dureeConnue, surProgression) {
+  return new Promise(async function(resolve, reject) {
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+      reject(new Error("MediaRecorder indisponible"));
+      return;
+    }
+    const formats = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4;codecs=avc1.4D401F,mp4a.40.2", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+    const format = formats.find(function(f) { return MediaRecorder.isTypeSupported(f); });
+    if (!format) { reject(new Error("Aucun format d'enregistrement")); return; }
+
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.playsInline = true;
+    video.preload = "auto";
+    video.src = url;
+    let contexteAudio = null;
+
+    function nettoyer() {
+      URL.revokeObjectURL(url);
+      if (contexteAudio) contexteAudio.close().catch(function() {});
+    }
+
+    try {
+      await new Promise(function(ok, ko) {
+        video.onloadedmetadata = ok;
+        video.onerror = function() { ko(new Error("Vidéo illisible par le navigateur")); };
+      });
+      const duree = isFinite(video.duration) ? video.duration : (dureeConnue || 60);
+      const echelle = Math.min(1, 1280 / Math.max(video.videoWidth || 1280, video.videoHeight || 720));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(2, Math.round((video.videoWidth || 1280) * echelle / 2) * 2);
+      canvas.height = Math.max(2, Math.round((video.videoHeight || 720) * echelle / 2) * 2);
+      const ctx = canvas.getContext("2d");
+      const flux = canvas.captureStream(30);
+
+      // Son : routé vers l'enregistrement uniquement (rien n'est joué à voix haute)
+      try {
+        contexteAudio = new (window.AudioContext || window.webkitAudioContext)();
+        const source = contexteAudio.createMediaElementSource(video);
+        const destination = contexteAudio.createMediaStreamDestination();
+        source.connect(destination);
+        destination.stream.getAudioTracks().forEach(function(piste) { flux.addTrack(piste); });
+        await contexteAudio.resume();
+      } catch (e) {
+        console.warn("Vidéo compressée sans le son :", e);
+        video.muted = true;
+      }
+
+      const debitAudio = 96000;
+      const debitVideo = Math.max(600000, Math.min(2500000, Math.floor(TAILLE_CIBLE_VIDEO * 8 / duree) - debitAudio));
+      const enregistreur = new MediaRecorder(flux, { mimeType: format, videoBitsPerSecond: debitVideo, audioBitsPerSecond: debitAudio });
+      const morceaux = [];
+      enregistreur.ondataavailable = function(e) { if (e.data && e.data.size) morceaux.push(e.data); };
+      enregistreur.onstop = function() {
+        nettoyer();
+        const type = format.split(";")[0];
+        const extension = type === "video/mp4" ? "mp4" : "webm";
+        const blob = new Blob(morceaux, { type: type });
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, "") + "." + extension, { type: type }));
+      };
+
+      let actif = true;
+      function dessiner() {
+        if (!actif) return;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        surProgression(Math.min(99, Math.round(video.currentTime / duree * 100)));
+        if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(dessiner);
+        else setTimeout(dessiner, 33);
+      }
+      video.onended = function() {
+        actif = false;
+        surProgression(100);
+        setTimeout(function() { enregistreur.stop(); }, 200);
+      };
+
+      enregistreur.start(1000);
+      try {
+        await video.play();
+      } catch (e) {
+        // Lecture automatique refusée avec le son : on retente en muet
+        video.muted = true;
+        await video.play();
+      }
+      dessiner();
+    } catch (error) {
+      nettoyer();
+      reject(error);
+    }
+  });
+}
+
 // Envoie le fichier choisi vers l'album (public ou privé) du membre connecté
 async function televerserMedia(file, sousDossier) {
   const token = localStorage.getItem("outdoor_access_token");
@@ -2305,19 +2521,25 @@ async function televerserMedia(file, sousDossier) {
     return;
   }
 
-  file = await convertirSiBesoin(file);
-  if (!file) return;
+  const bouton = document.getElementById(sousDossier === "public" ? "bouton-ajouter-media-public" : "bouton-ajouter-media-prive");
+  const estVideo = /^video\//.test(file.type) || /\.(mp4|mov|m4v|webm|3gp)$/i.test(file.name);
 
-  const TAILLE_MAX = 25 * 1024 * 1024;
-  if (file.size > TAILLE_MAX) {
-    alert("Le fichier est trop volumineux (25 Mo maximum).");
+  if (estVideo) {
+    file = await preparerVideo(file, bouton);
+    if (!file) return;
+  } else {
+    file = await convertirSiBesoin(file);
+    if (!file) return;
+  }
+
+  if (file.size > TAILLE_MAX_MEDIA) {
+    alert("Le fichier est trop volumineux (50 Mo maximum).");
     return;
   }
 
   const nomNettoye = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
   const chemin = cheminAlbum(idUtilisateurCourant, sousDossier) + Date.now() + "-" + nomNettoye;
   const idConteneur = sousDossier === "public" ? "galerie-medias-public" : "galerie-medias-prive";
-  const bouton = document.getElementById(sousDossier === "public" ? "bouton-ajouter-media-public" : "bouton-ajouter-media-prive");
 
   await avecChargement(bouton, "Envoi en cours...", async function() {
     try {
@@ -3177,6 +3399,7 @@ async function chargerModerationAlbums() {
   verrou.style.display = "none";
   zone.style.display = "";
   liste.innerHTML = "<p>Chargement des membres...</p>";
+  chargerVerificationsEnAttente();
 
   const token = localStorage.getItem("outdoor_access_token");
 
@@ -3279,6 +3502,7 @@ async function deconnexion() {
   document.getElementById("formulaire-changer-mdp").style.display = "none";
   document.getElementById("verification-age").classList.remove("actif");
   document.getElementById("carte-supprimer-compte").open = false;
+  document.getElementById("bandeau-verification").style.display = "none";
   document.getElementById("liste-demandes-album").innerHTML = '<p class="aide-champ">Aucune demande pour l\'instant.</p>';
   promesseStatutsAlbums = null;
   window.monProfilCourant = null;
@@ -3364,6 +3588,11 @@ async function appliquerFiltre() {
 
   if (!token) return;
 
+  if (compteEnAttente()) {
+    container.innerHTML = "<p>⏳ Votre compte est en cours de vérification. Vous pourrez découvrir les membres dès qu'il sera validé.</p>";
+    return;
+  }
+
   if (!window.monProfilCourant || !window.monProfilCourant.latitude) {
     container.innerHTML = "<p>Votre ville n'est pas encore localisée. Allez dans votre profil et appuyez sur « 📍 Mettre à jour ma localisation ».</p>";
     return;
@@ -3383,7 +3612,11 @@ async function appliquerFiltre() {
     });
 
     if (!response.ok) throw new Error(await response.text());
-    afficherResultatsAnnuaire(await response.json());
+    const typeRecherche = document.getElementById("type-filtre").value;
+    const membres = (await response.json()).filter(function(m) {
+      return !typeRecherche || String(m.Profil || "").toLowerCase() === typeRecherche;
+    });
+    afficherResultatsAnnuaire(membres, typeRecherche);
   } catch (error) {
     console.error(error);
     container.innerHTML = "<p>Impossible de charger les membres. Réessayez dans un instant.</p>";
@@ -3482,13 +3715,17 @@ async function chargerDemandesAlbum() {
   }
 }
 
-function afficherResultatsAnnuaire(profils) {
+const LIBELLES_PROFIL = { homme: "👨 Homme", femme: "👩 Femme", couple: "👫 Couple", trans: "🏳️‍⚧️ Trans" };
+
+function afficherResultatsAnnuaire(profils, typeRecherche) {
   promesseStatutsAlbums = null;
   const container = document.getElementById("liste-profils");
   container.innerHTML = "";
 
   if (profils.length === 0) {
-    container.innerHTML = "<p>Aucun profil trouvé dans ce rayon. Essayez un rayon plus grand.</p>";
+    container.innerHTML = typeRecherche
+      ? "<p>Aucun profil de ce type dans ce rayon. Essayez un rayon plus grand ou un autre type.</p>"
+      : "<p>Aucun profil trouvé dans ce rayon. Essayez un rayon plus grand.</p>";
     return;
   }
 
@@ -3516,6 +3753,8 @@ function afficherResultatsAnnuaire(profils) {
     }
 
     ajouter("h3", p.Pseudonyme || "Membre");
+    const libelle = LIBELLES_PROFIL[String(p.Profil || "").toLowerCase()];
+    if (libelle) ajouter("span", libelle).className = "badge-categorie";
     if (p["Présentation"]) ajouter("p", p["Présentation"]);
     ajouter("p", "Recherche : " + (p.recherche || "Non précisé"));
     if (p.envies && p.envies.length) ajouter("p", "Envies : " + p.envies.join(", "));
@@ -3899,6 +4138,10 @@ async function chargerConversations() {
 }
 
 const envoyerMessage = unSeulALaFois(async function() {
+  if (compteEnAttente()) {
+    alert("Votre compte est en cours de vérification : vous pourrez écrire aux membres dès qu'il sera validé.");
+    return;
+  }
   const token = localStorage.getItem("outdoor_access_token");
   const input = document.getElementById("chat-input");
   const contenu = input.value.trim();
@@ -4638,6 +4881,10 @@ function allerRendezVous(creer) {
     return;
   }
   window.location.hash = "rendez-vous";
+  if (creer && compteEnAttente()) {
+    alert("Votre compte est en cours de vérification : vous pourrez proposer un rendez-vous dès qu'il sera validé.");
+    return;
+  }
   if (creer) ouvrirFormulaireRdv();
 }
 
@@ -4762,6 +5009,181 @@ window.addEventListener("hashchange", function() {
   if (window.location.hash === "#rendez-vous") chargerRendezVous();
 });
 if (window.location.hash === "#rendez-vous") setTimeout(chargerRendezVous, 1500);
+
+// ---------- Vérification d'identité des nouveaux inscrits ----------
+// Les documents partent dans un espace privé que personne ne peut lire depuis le site ;
+// l'administratrice les consulte dans Supabase, puis ils sont supprimés après sa décision.
+const TAILLE_MAX_DOCUMENT = 10 * 1024 * 1024;
+
+function compteEnAttente() {
+  const p = window.monProfilCourant;
+  return !!p && !!p.verification_statut && p.verification_statut !== "validee";
+}
+
+function collecterDocumentsVerification(bloc) {
+  const fichiers = [];
+  const champsPiece = bloc.querySelectorAll("input.piece-identite");
+  for (const champ of champsPiece) {
+    if (!champ.files[0]) return { erreur: "Merci d'ajouter la pièce d'identité demandée." };
+    fichiers.push({ fichier: champ.files[0], nom: "piece-identite-" + (champ.dataset.numero || "1") });
+  }
+  const champCouple = bloc.querySelector("input.photo-couple");
+  if (champCouple) {
+    if (!champCouple.files[0]) return { erreur: "Merci d'ajouter une photo de vous deux ensemble." };
+    fichiers.push({ fichier: champCouple.files[0], nom: "photo-couple" });
+  }
+  for (const f of fichiers) {
+    const estImage = /^image\//.test(f.fichier.type) || /\.hei[cf]$/i.test(f.fichier.name);
+    const estPdf = f.fichier.type === "application/pdf" || /\.pdf$/i.test(f.fichier.name);
+    if (!estImage && !estPdf) return { erreur: "Format non accepté pour « " + f.fichier.name + " » : envoyez une photo ou un PDF." };
+    if (estPdf && f.fichier.size > TAILLE_MAX_DOCUMENT) return { erreur: "Le PDF « " + f.fichier.name + " » dépasse 10 Mo." };
+  }
+  return { fichiers: fichiers };
+}
+
+async function preparerDocument(fichier) {
+  if (fichier.type === "application/pdf" || /\.pdf$/i.test(fichier.name)) return fichier;
+  let image = await convertirHeic(fichier);
+  if (!image) return null;
+  // Réduit seulement les très grosses photos, en gardant le document bien lisible
+  if (image.size > 4 * 1024 * 1024) image = await compresserImage(image, 2400, 0.9);
+  return image;
+}
+
+async function envoyerDocumentsVerification(liste, userId, jeton) {
+  let toutOk = true;
+  for (const doc of liste) {
+    try {
+      const fichier = await preparerDocument(doc.fichier);
+      if (!fichier || fichier.size > TAILLE_MAX_DOCUMENT) { toutOk = false; continue; }
+      const extension = fichier.type === "application/pdf" ? "pdf" : (fichier.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+      const chemin = userId + "/" + doc.nom + "-" + Date.now() + "." + extension;
+      const response = await fetch(SUPABASE_URL + "/storage/v1/object/verifications/" + chemin, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + jeton, "Content-Type": fichier.type || "application/octet-stream" },
+        body: fichier
+      });
+      if (!response.ok) { toutOk = false; console.error("Envoi document :", await response.text()); }
+    } catch (error) {
+      toutOk = false;
+      console.error(error);
+    }
+  }
+  try {
+    await fetch(SUPABASE_URL + "/rest/v1/rpc/documents_verification_envoyes", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + jeton, "Content-Type": "application/json" },
+      body: "{}"
+    });
+  } catch (e) { console.error(e); }
+  return toutOk;
+}
+
+async function afficherStatutVerification(profil) {
+  const bandeau = document.getElementById("bandeau-verification");
+  const texte = document.getElementById("texte-verification");
+  const form = document.getElementById("formulaire-documents");
+  const statut = profil.verification_statut;
+  bandeau.classList.remove("refuse");
+  form.style.display = "none";
+  if (!statut || statut === "validee") { bandeau.style.display = "none"; return; }
+  bandeau.style.display = "";
+  if (statut === "refusee") {
+    bandeau.classList.add("refuse");
+    texte.textContent = "❌ La vérification de votre compte n'a pas abouti. Écrivez-nous via « Signaler un problème » pour en savoir plus.";
+    return;
+  }
+  texte.textContent = "⏳ Votre compte est en cours de vérification. Dès que l'administratrice aura validé vos documents, vous aurez accès à l'annuaire, aux messages et aux rendez-vous. En attendant, complétez votre profil et vos albums !";
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/mes_documents_verification", { method: "POST", headers: enTetesMembre(), body: "{}" });
+    const docs = (await r.json())[0] || {};
+    const estCouple = String(profil.Profil || "").toLowerCase() === "couple";
+    const manquePiece = !docs.piece_identite;
+    const manqueCouple = estCouple && !docs.photo_couple;
+    if (manquePiece || manqueCouple) {
+      texte.textContent = "⚠️ Il manque des documents pour vérifier votre majorité. Envoyez-les ci-dessous pour que votre compte puisse être activé.";
+      document.getElementById("champ-renvoi-piece").style.display = manquePiece ? "" : "none";
+      document.getElementById("champ-renvoi-piece-2").style.display = manquePiece && estCouple ? "" : "none";
+      document.getElementById("champ-renvoi-couple").style.display = manqueCouple ? "" : "none";
+      form.style.display = "";
+    }
+  } catch (e) { console.error(e); }
+}
+
+document.getElementById("formulaire-documents").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const form = this;
+  const message = document.getElementById("message-documents");
+  const visibles = Array.from(form.querySelectorAll("input[type=file]")).filter(function(c) { return c.offsetParent !== null; });
+  const liste = [];
+  for (const champ of visibles) {
+    if (!champ.files[0]) { message.textContent = "Merci d'ajouter tous les documents demandés."; return; }
+    liste.push({ fichier: champ.files[0], nom: champ.classList.contains("photo-couple") ? "photo-couple" : "piece-identite-" + (champ.dataset.numero || "1") });
+  }
+  const bouton = document.getElementById("bouton-envoyer-documents");
+  await avecChargement(bouton, "Envoi...", async function() {
+    const ok = await envoyerDocumentsVerification(liste, idUtilisateurCourant, localStorage.getItem("outdoor_access_token"));
+    message.textContent = ok ? "Documents envoyés ✅ Merci !" : "L'envoi a échoué, réessayez (photo ou PDF de 10 Mo maximum).";
+    if (ok) { form.reset(); afficherStatutVerification(window.monProfilCourant); }
+  });
+});
+
+// Modération : comptes à vérifier (aucun document affiché ici)
+async function chargerVerificationsEnAttente() {
+  const liste = document.getElementById("liste-verifications");
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/verifications_en_attente", { method: "POST", headers: enTetesMembre(), body: "{}" });
+    if (!r.ok) throw new Error(await r.text());
+    const comptes = await r.json();
+    liste.innerHTML = "";
+    if (comptes.length === 0) { liste.innerHTML = "<p>Aucun compte à vérifier. 👍</p>"; return; }
+    comptes.forEach(function(c) {
+      const ligne = document.createElement("div");
+      ligne.className = "ligne-verif";
+      const estCouple = String(c.profil || "").toLowerCase() === "couple";
+      const age = calculerAge(c.date_naissance);
+      const infos = [
+        "<strong>" + echapperTexte(c.pseudo || "Membre") + "</strong> — " + echapperTexte(LIBELLES_PROFIL[String(c.profil || "").toLowerCase()] || c.profil || ""),
+        "Né(e) le " + new Date(c.date_naissance).toLocaleDateString("fr-FR") + (age !== null ? " (" + age + " ans déclarés)" : "") +
+          " · inscrit le " + new Date(c.inscrit_le).toLocaleDateString("fr-FR"),
+        "Pièce d'identité : " + (c.piece_identite ? "✅ reçue" : "❌ manquante") +
+          (estCouple ? " · Photo du couple : " + (c.photo_couple ? "✅ reçue" : "❌ manquante") : ""),
+        '<span class="aide-champ">Dossier Supabase : ' + echapperTexte(c.user_id) + "</span>"
+      ];
+      ligne.innerHTML = infos.map(function(t) { return "<p>" + t + "</p>"; }).join("");
+      const boutons = document.createElement("div");
+      boutons.className = "boutons";
+      [["validee", "✅ Valider", "primaire"], ["refusee", "❌ Refuser", "contour"]].forEach(function(choix) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = choix[2]; b.textContent = choix[1];
+        b.addEventListener("click", async function() {
+          const question = choix[0] === "validee"
+            ? "Valider le compte de " + (c.pseudo || "ce membre") + " ? Ses documents seront supprimés."
+            : "Refuser le compte de " + (c.pseudo || "ce membre") + " ? Ses documents seront supprimés.";
+          if (!confirm(question)) return;
+          b.disabled = true;
+          try {
+            const rep = await fetch(SUPABASE_URL + "/functions/v1/decision-verification", {
+              method: "POST", headers: enTetesMembre(), body: JSON.stringify({ user_id: c.user_id, decision: choix[0] })
+            });
+            const data = await rep.json();
+            if (!rep.ok) throw new Error(data.error || "Erreur");
+            afficherAlerte(choix[0] === "validee" ? "Compte validé ✅" : "Compte refusé", "info");
+          } catch (error) {
+            alert("Action impossible : " + error.message);
+          }
+          chargerVerificationsEnAttente();
+        });
+        boutons.appendChild(b);
+      });
+      ligne.appendChild(boutons);
+      liste.appendChild(ligne);
+    });
+  } catch (error) {
+    console.error(error);
+    liste.innerHTML = "<p>Impossible de charger les vérifications.</p>";
+  }
+}
 </script>
 </body>
 </html>
