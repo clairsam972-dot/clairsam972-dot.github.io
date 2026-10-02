@@ -125,8 +125,10 @@
     .ligne-demande { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
     .ligne-demande .boutons { display: flex; gap: 6px; }
     .ligne-demande button { padding: 6px 12px; font-size: 14px; }
-    .msg-actions-acces { display: flex; gap: 8px; margin-top: 10px; font-weight: 600; }
-    .msg-actions-acces button { padding: 8px 16px; font-size: 14px; }
+    .msg-actions-acces { margin-top: 10px; font-weight: 600; }
+    .msg-actions-acces .boutons { display: flex; flex-wrap: wrap; gap: 6px; }
+    .msg-actions-acces > button { margin-top: 6px; }
+    .msg-actions-acces button { padding: 7px 12px; font-size: 13px; }
     .msg-actions-acces button.contour { color: #5a2a68; border-color: #5a2a68; background: transparent; }
     .bouton-album-prive[disabled] { opacity: .6; cursor: default; }
     .filtres-aventures { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
@@ -3697,8 +3699,8 @@ let promesseStatutsAlbums = null;
 function statutsAlbumsPrives() {
   if (!promesseStatutsAlbums) {
     promesseStatutsAlbums = fetch(
-      SUPABASE_URL + "/rest/v1/acces_album?select=proprietaire,statut&demandeur=eq." + idUtilisateurCourant,
-      { headers: enTetesMembre() }
+      SUPABASE_URL + "/rest/v1/rpc/mes_statuts_acces",
+      { method: "POST", headers: enTetesMembre(), body: "{}" }
     ).then(function(r) { return r.ok ? r.json() : []; }).then(function(lignes) {
       const statuts = {};
       lignes.forEach(function(l) { statuts[l.proprietaire] = l.statut; });
@@ -3708,11 +3710,54 @@ function statutsAlbumsPrives() {
   return promesseStatutsAlbums;
 }
 
+// Réponses aux demandes d'accès à mon album privé (utilisées dans « Mon profil » et dans la messagerie)
+async function appelerAccesAlbum(fonction, corps) {
+  const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fonction, {
+    method: "POST", headers: enTetesMembre(), body: JSON.stringify(corps)
+  });
+  if (!r.ok) { const e = await r.json().catch(function() { return {}; }); throw new Error(e.message || "Action impossible."); }
+}
+
+function libelleDureeAcces(d) {
+  if (d.duree === "une_fois") return "une seule consultation";
+  if (d.duree === "48h") {
+    return d.expire_le ? "jusqu'au " + new Date(d.expire_le).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "48 h";
+  }
+  return "sans limite de durée";
+}
+
+// Crée les boutons de réponse à une demande : 3 durées d'accès + refuser
+function boutonsReponseAcces(demandeur, apres) {
+  const zone = document.createElement("div");
+  zone.className = "boutons";
+  const tous = [];
+  function bouton(texte, classe, accepter, duree) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = classe; b.textContent = texte;
+    b.addEventListener("click", async function() {
+      tous.forEach(function(x) { x.disabled = true; });
+      try {
+        await appelerAccesAlbum("repondre_acces_album_duree", { p_demandeur: demandeur, p_accepter: accepter, p_duree: duree || "illimite" });
+        apres(accepter ? "✅ Accès accordé (" + { une_fois: "une seule consultation", "48h": "48 h", illimite: "sans limite" }[duree] + ")" : "❌ Demande refusée");
+      } catch (e) {
+        alert(e.message);
+        apres(null);
+      }
+    });
+    tous.push(b); zone.appendChild(b);
+  }
+  bouton("Accepter 1 fois", "primaire", true, "une_fois");
+  bouton("Accepter 48 h", "primaire", true, "48h");
+  bouton("Accepter sans limite", "primaire", true, "illimite");
+  bouton("Refuser", "contour", false);
+  return zone;
+}
+
 // Demandes reçues pour mon album privé (dans « Mon profil »)
 async function chargerDemandesAlbum() {
   const liste = document.getElementById("liste-demandes-album");
   try {
-    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/demandes_album_recues", {
+    const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/demandes_album_recues_v2", {
       method: "POST", headers: enTetesMembre(), body: "{}"
     });
     if (!response.ok) throw new Error(await response.text());
@@ -3726,35 +3771,24 @@ async function chargerDemandesAlbum() {
       const ligne = document.createElement("div");
       ligne.className = "ligne-demande";
       const nom = document.createElement("span");
-      nom.textContent = (d.pseudo || "Membre") + (d.statut === "accepte" ? " — accès accordé 🔓" : " — en attente");
-      const boutons = document.createElement("div");
-      boutons.className = "boutons";
-      function bouton(texte, classe, action) {
+      nom.textContent = (d.pseudo || "Membre") + (d.statut === "accepte" ? " — accès accordé 🔓 (" + libelleDureeAcces(d) + ")" : " — demande en attente");
+      ligne.appendChild(nom);
+      if (d.statut === "en_attente") {
+        ligne.appendChild(boutonsReponseAcces(d.demandeur, function() { chargerDemandesAlbum(); }));
+      } else {
+        const boutons = document.createElement("div");
+        boutons.className = "boutons";
         const b = document.createElement("button");
-        b.type = "button"; b.className = classe; b.textContent = texte;
+        b.type = "button"; b.className = "contour"; b.textContent = "Retirer l'accès";
         b.addEventListener("click", async function() {
+          if (!confirm("Retirer l'accès de " + (d.pseudo || "ce membre") + " à votre album privé ?")) return;
           b.disabled = true;
-          try { await action(); } catch (e) { alert(e.message); }
+          try { await appelerAccesAlbum("retirer_acces_album", { p_autre: d.demandeur }); } catch (e) { alert(e.message); }
           chargerDemandesAlbum();
         });
         boutons.appendChild(b);
+        ligne.appendChild(boutons);
       }
-      async function appeler(fonction, corps) {
-        const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fonction, {
-          method: "POST", headers: enTetesMembre(), body: JSON.stringify(corps)
-        });
-        if (!r.ok) { const e = await r.json().catch(function() { return {}; }); throw new Error(e.message || "Action impossible."); }
-      }
-      if (d.statut === "en_attente") {
-        bouton("Accepter", "primaire", function() { return appeler("repondre_acces_album", { p_demandeur: d.demandeur, p_accepter: true }); });
-        bouton("Refuser", "contour", function() { return appeler("repondre_acces_album", { p_demandeur: d.demandeur, p_accepter: false }); });
-      } else {
-        bouton("Retirer l'accès", "contour", function() {
-          if (!confirm("Retirer l'accès de " + (d.pseudo || "ce membre") + " à votre album privé ?")) return Promise.resolve();
-          return appeler("retirer_acces_album", { p_autre: d.demandeur });
-        });
-      }
-      ligne.append(nom, boutons);
       liste.appendChild(ligne);
     });
   } catch (error) {
@@ -3851,6 +3885,7 @@ function afficherResultatsAnnuaire(profils, typeRecherche) {
       boutonPrive.textContent =
         statut === "accepte" ? "🔓 Voir l'album privé" :
         statut === "en_attente" ? "⏳ Demande d'accès envoyée" :
+        statut === "expire" ? "🔒 Accès terminé — redemander l'accès" :
         "🔒 Demander l'accès à l'album privé";
     }
     statutsAlbumsPrives().then(function(statuts) { majBoutonPrive(statuts[p.user_id]); });
@@ -3860,6 +3895,21 @@ function afficherResultatsAnnuaire(profils, typeRecherche) {
         conteneurPrive.style.display = visible ? "none" : "";
         boutonPrive.textContent = visible ? "🔓 Voir l'album privé" : "Masquer l'album privé";
         if (!visible && !priveCharge) {
+          // Ouverture de l'album : démarre la consultation pour un accès « une seule fois »
+          let encoreAutorise = false;
+          try {
+            const ouverture = await fetch(SUPABASE_URL + "/rest/v1/rpc/ouvrir_album_prive", {
+              method: "POST", headers: enTetesMembre(), body: JSON.stringify({ p_proprietaire: p.user_id })
+            });
+            encoreAutorise = ouverture.ok && (await ouverture.json()) === true;
+          } catch (e) { encoreAutorise = false; }
+          if (!encoreAutorise) {
+            conteneurPrive.style.display = "none";
+            promesseStatutsAlbums = null;
+            majBoutonPrive("expire");
+            alert("Votre accès à cet album privé est terminé ou a été retiré. Vous pouvez en redemander l'accès.");
+            return;
+          }
           priveCharge = true;
           chargerAlbum(p.user_id, "prive", idAlbumPrive, false);
         }
@@ -3967,21 +4017,22 @@ async function chargerMessages() {
     container.innerHTML = "<p>Aucun message pour l'instant. Écris le premier !</p>";
   }
 
-  // Demande d'accès à mon album privé encore en attente de la part de ce membre ?
-  // Si oui, boutons Accepter / Refuser sous son dernier message de demande.
-  let demandeEnAttente = false;
+  // Demande d'accès à mon album privé venant de ce membre : boutons sous son dernier message de demande.
+  // Demande en attente : accepter (1 fois / 48 h / sans limite) ou refuser.
+  // Accès déjà accordé : possibilité de le retirer à tout moment.
+  let etatAcces = null;
   let dernierIndexDemande = -1;
   messages.forEach(function(m, i) {
     if (m.sender_id === destinataireActuelId && typeof m.content === "string" && m.content.indexOf("🔒 ") === 0) dernierIndexDemande = i;
   });
   if (dernierIndexDemande >= 0) {
     try {
-      const rep = await fetch(SUPABASE_URL + "/rest/v1/rpc/demandes_album_recues", {
+      const rep = await fetch(SUPABASE_URL + "/rest/v1/rpc/demandes_album_recues_v2", {
         method: "POST", headers: enTetesMembre(), body: "{}"
       });
       if (rep.ok) {
         const demandes = await rep.json();
-        demandeEnAttente = demandes.some(function(d) { return d.demandeur === destinataireActuelId && d.statut === "en_attente"; });
+        etatAcces = demandes.find(function(d) { return d.demandeur === destinataireActuelId; }) || null;
       }
     } catch (e) { /* on affiche simplement le message sans boutons */ }
   }
@@ -3993,32 +4044,32 @@ async function chargerMessages() {
     if (i === dernierIndexDemande) {
       const zone = document.createElement("div");
       zone.className = "msg-actions-acces";
-      if (demandeEnAttente) {
-        const repondreAcces = async function(accepter, boutons) {
-          boutons.forEach(function(b) { b.disabled = true; });
-          try {
-            const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/repondre_acces_album", {
-              method: "POST", headers: enTetesMembre(),
-              body: JSON.stringify({ p_demandeur: destinataireActuelId, p_accepter: accepter })
-            });
-            if (!r.ok) { const e = await r.json().catch(function() { return {}; }); throw new Error(e.message || "Action impossible."); }
-            reponseAccesAffichee[destinataireActuelId] = accepter ? "✅ Accès accordé" : "❌ Demande refusée";
-          } catch (e) {
-            alert(e.message);
-          }
-          chargerMessages();
-          if (document.getElementById("liste-demandes-album")) chargerDemandesAlbum();
-        };
-        const oui = document.createElement("button");
-        oui.type = "button"; oui.className = "primaire"; oui.textContent = "Accepter";
-        const non = document.createElement("button");
-        non.type = "button"; non.className = "contour"; non.textContent = "Refuser";
-        oui.addEventListener("click", function() { repondreAcces(true, [oui, non]); });
-        non.addEventListener("click", function() { repondreAcces(false, [oui, non]); });
-        zone.append(oui, non);
+      const idMembre = destinataireActuelId;
+      function rafraichir(texte) {
+        if (texte) reponseAccesAffichee[idMembre] = texte;
+        chargerMessages();
+        if (document.getElementById("liste-demandes-album")) chargerDemandesAlbum();
+      }
+      if (etatAcces && etatAcces.statut === "en_attente") {
+        zone.appendChild(boutonsReponseAcces(idMembre, function(texte) { rafraichir(texte); }));
         bulle.appendChild(zone);
-      } else if (reponseAccesAffichee[destinataireActuelId]) {
-        zone.textContent = reponseAccesAffichee[destinataireActuelId];
+      } else if (etatAcces && etatAcces.statut === "accepte") {
+        const info = document.createElement("div");
+        info.textContent = "🔓 Accès accordé (" + libelleDureeAcces(etatAcces) + ")";
+        const retirer = document.createElement("button");
+        retirer.type = "button"; retirer.className = "contour"; retirer.textContent = "Retirer l'accès";
+        retirer.addEventListener("click", async function() {
+          if (!confirm("Retirer l'accès à votre album privé ?")) return;
+          retirer.disabled = true;
+          try {
+            await appelerAccesAlbum("retirer_acces_album", { p_autre: idMembre });
+            rafraichir("🔒 Accès retiré");
+          } catch (e) { alert(e.message); retirer.disabled = false; }
+        });
+        zone.append(info, retirer);
+        bulle.appendChild(zone);
+      } else if (reponseAccesAffichee[idMembre]) {
+        zone.textContent = reponseAccesAffichee[idMembre];
         bulle.appendChild(zone);
       }
     }
