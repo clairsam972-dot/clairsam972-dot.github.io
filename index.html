@@ -434,7 +434,7 @@
       <li><span class="emoji">🙈</span><div><strong>Jamais sous le nez des passants</strong><span class="texte">L'adrénaline oui, gêner les autres non : on choisit des coins discrets et on n'impose jamais le spectacle à ceux qui n'ont rien demandé (c'est aussi ce que dit la loi 😉).</span></div></li>
       <li><span class="emoji">🤫</span><div><strong>Discrétion absolue</strong><span class="texte">Pseudonyme obligatoire, ta position n'est jamais affichée (juste une distance en km) et ton album privé ne regarde que toi.</span></div></li>
       <li><span class="emoji">🛡️</span><div><strong>Une team bienveillante</strong><span class="texte">Un membre lourd ? Bloque-le ou signale-le en un clic, on s'en occupe.</span></div></li>
-      <li><span class="emoji">💳</span><div><strong>Côté porte-monnaie</strong><span class="texte">Inscription gratuite. Accès complet offert aux femmes et aux couples, 14,90 €/mois sans engagement pour les hommes et les personnes trans.</span></div></li>
+      <li><span class="emoji">💳</span><div><strong>Côté porte-monnaie</strong><span class="texte">Inscription gratuite. Accès complet offert aux femmes et aux couples. Pour les hommes et les personnes trans : 14,90 €/mois sans engagement, et la première année est offerte aux 20 premiers inscrits !</span></div></li>
     </ul>
 
     <div class="accueil-actions">
@@ -585,7 +585,7 @@
     <h3>Comment ça marche côté tarifs ?</h3>
     <p>✅ Inscription gratuite pour tout le monde.</p>
     <p>✅ Créer et proposer une aventure : gratuit.</p>
-    <p>🔑 Accès à toutes les aventures : gratuit pour les femmes et les couples, 14,90 €/mois pour les hommes et les personnes trans.</p>
+    <p>🔑 Accès à toutes les aventures : gratuit pour les femmes et les couples, 14,90 €/mois pour les hommes et les personnes trans (première année offerte aux 20 premiers inscrits).</p>
     <p>🃏 Bloqué sur une énigme ? Un joker débloque la réponse pour 10€.</p>
   </article>
 </section>
@@ -1331,6 +1331,7 @@
   <h3>5. Offres payantes</h3>
   <p>
     <strong>Accès aux aventures et au chat commun :</strong> gratuit pour les profils Femme et Couple ; abonnement de 14,90 € TTC par mois pour les profils Homme et Trans, sans engagement, reconduit automatiquement chaque mois. Le type de profil choisi à l'inscription ne peut pas être modifié ensuite ; une fausse déclaration de profil entraîne la suppression du compte. La création d'aventures reste gratuite pour tous.<br>
+    <strong>Offre de lancement :</strong> la première année d'accès est offerte aux 20 premiers membres de profil Homme ou Trans inscrits depuis le lancement de l'offre, dans la limite des places disponibles. Elle court à compter de l'inscription ; aucun paiement n'est demandé pendant cette période, et aucun prélèvement n'est effectué automatiquement à son terme : l'accès aux aventures est alors conditionné à la souscription de l'abonnement.<br>
     <strong>Joker :</strong> 10 € TTC par joker, paiement unique, pour révéler la réponse d'un indice.<br>
     Les paiements sont traités par Stripe ; nous n'avons jamais accès à vos coordonnées bancaires.
   </p>
@@ -2014,9 +2015,13 @@ const PROFILS_GRATUITS = ["femme", "couple"];
 function accesGratuit(profil) {
   return !!profil && PROFILS_GRATUITS.includes(String(profil.Profil || "").toLowerCase());
 }
+// Offre de lancement : première année offerte aux 20 premiers hommes et trans inscrits
+function offreLancementActive(profil) {
+  return !!profil && !!profil.offre_lancement_jusqu && new Date(profil.offre_lancement_jusqu).getTime() > Date.now();
+}
 // Le membre a-t-il accès aux aventures ? (abonné ou profil gratuit)
 function aAcces(profil) {
-  return !!profil && (!!profil.abonnement_actif || accesGratuit(profil));
+  return !!profil && (!!profil.abonnement_actif || accesGratuit(profil) || offreLancementActive(profil));
 }
 
 // Affiche le statut d'abonnement du membre et le bouton pour s'abonner
@@ -2029,6 +2034,10 @@ function afficherStatutAbonnement(profil) {
     bouton.style.display = "none";
   } else if (profil.abonnement_actif) {
     statut.textContent = "Actif ✅ — accès complet aux aventures";
+    bouton.style.display = "none";
+  } else if (offreLancementActive(profil)) {
+    statut.textContent = "Première année offerte 🎁 — accès complet jusqu'au " +
+      new Date(profil.offre_lancement_jusqu).toLocaleDateString("fr-FR") + " (aucun paiement à effectuer)";
     bouton.style.display = "none";
   } else {
     statut.textContent = "Aucun abonnement actif";
