@@ -125,6 +125,9 @@
     .ligne-demande { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
     .ligne-demande .boutons { display: flex; gap: 6px; }
     .ligne-demande button { padding: 6px 12px; font-size: 14px; }
+    .msg-actions-acces { display: flex; gap: 8px; margin-top: 10px; font-weight: 600; }
+    .msg-actions-acces button { padding: 8px 16px; font-size: 14px; }
+    .msg-actions-acces button.contour { color: #5a2a68; border-color: #5a2a68; background: transparent; }
     .bouton-album-prive[disabled] { opacity: .6; cursor: default; }
     .filtres-aventures { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
     .filtres-aventures button { padding: 8px 12px; font-size: 14px; }
@@ -3939,6 +3942,9 @@ function fermerChat() {
   if (window.location.hash === "#mes-messages") chargerConversations();
 }
 
+// Dernière réponse (accepté / refusé) donnée à une demande d'album, par membre, pour l'afficher sous le message
+const reponseAccesAffichee = {};
+
 async function chargerMessages() {
   const token = localStorage.getItem("outdoor_access_token");
   if (!token || !destinataireActuelId) return;
@@ -3961,10 +3967,61 @@ async function chargerMessages() {
     container.innerHTML = "<p>Aucun message pour l'instant. Écris le premier !</p>";
   }
 
-  messages.forEach(function(m) {
+  // Demande d'accès à mon album privé encore en attente de la part de ce membre ?
+  // Si oui, boutons Accepter / Refuser sous son dernier message de demande.
+  let demandeEnAttente = false;
+  let dernierIndexDemande = -1;
+  messages.forEach(function(m, i) {
+    if (m.sender_id === destinataireActuelId && typeof m.content === "string" && m.content.indexOf("🔒 ") === 0) dernierIndexDemande = i;
+  });
+  if (dernierIndexDemande >= 0) {
+    try {
+      const rep = await fetch(SUPABASE_URL + "/rest/v1/rpc/demandes_album_recues", {
+        method: "POST", headers: enTetesMembre(), body: "{}"
+      });
+      if (rep.ok) {
+        const demandes = await rep.json();
+        demandeEnAttente = demandes.some(function(d) { return d.demandeur === destinataireActuelId && d.statut === "en_attente"; });
+      }
+    } catch (e) { /* on affiche simplement le message sans boutons */ }
+  }
+
+  messages.forEach(function(m, i) {
     const bulle = document.createElement("div");
     bulle.className = "msg-bulle " + (m.sender_id === idUtilisateurCourant ? "msg-envoye" : "msg-recu");
     bulle.textContent = m.content;
+    if (i === dernierIndexDemande) {
+      const zone = document.createElement("div");
+      zone.className = "msg-actions-acces";
+      if (demandeEnAttente) {
+        const repondreAcces = async function(accepter, boutons) {
+          boutons.forEach(function(b) { b.disabled = true; });
+          try {
+            const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/repondre_acces_album", {
+              method: "POST", headers: enTetesMembre(),
+              body: JSON.stringify({ p_demandeur: destinataireActuelId, p_accepter: accepter })
+            });
+            if (!r.ok) { const e = await r.json().catch(function() { return {}; }); throw new Error(e.message || "Action impossible."); }
+            reponseAccesAffichee[destinataireActuelId] = accepter ? "✅ Accès accordé" : "❌ Demande refusée";
+          } catch (e) {
+            alert(e.message);
+          }
+          chargerMessages();
+          if (document.getElementById("liste-demandes-album")) chargerDemandesAlbum();
+        };
+        const oui = document.createElement("button");
+        oui.type = "button"; oui.className = "primaire"; oui.textContent = "Accepter";
+        const non = document.createElement("button");
+        non.type = "button"; non.className = "contour"; non.textContent = "Refuser";
+        oui.addEventListener("click", function() { repondreAcces(true, [oui, non]); });
+        non.addEventListener("click", function() { repondreAcces(false, [oui, non]); });
+        zone.append(oui, non);
+        bulle.appendChild(zone);
+      } else if (reponseAccesAffichee[destinataireActuelId]) {
+        zone.textContent = reponseAccesAffichee[destinataireActuelId];
+        bulle.appendChild(zone);
+      }
+    }
     container.appendChild(bulle);
   });
 
