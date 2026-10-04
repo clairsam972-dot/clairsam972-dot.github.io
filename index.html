@@ -1058,6 +1058,12 @@
     <button type="button" class="contour" data-categorie="nuit">🌙 Nuit sauvage</button>
     <button type="button" class="contour" data-categorie="defi">🧩 Défi mystère</button>
   </div>
+  <div class="filtres-aventures" id="filtres-lieux">
+    <button type="button" class="contour actif" data-lieu="">📍 Tous lieux</button>
+    <button type="button" class="contour" data-lieu="paris_idf">🗼 Paris &amp; Île-de-France</button>
+    <button type="button" class="contour" data-lieu="aire_autoroute">🛣️ Aire d'autoroute</button>
+    <button type="button" class="contour" data-lieu="autres">🗺️ Autres</button>
+  </div>
   <div id="liste-aventures"></div>
 
   <a class="contour" href="#espace-membre">Retour à mon profil</a>
@@ -1098,6 +1104,15 @@
       <option value="nuit">🌙 Nuit sauvage</option>
       <option value="defi">🧩 Défi mystère</option>
     </select>
+
+    <label for="lieu-aventure">Zone de l'aventure</label>
+    <select id="lieu-aventure" required>
+      <option value="">-- Choisissez --</option>
+      <option value="paris_idf">🗼 Paris &amp; Île-de-France</option>
+      <option value="aire_autoroute">🛣️ Aire d'autoroute</option>
+      <option value="autres">🗺️ Autres</option>
+    </select>
+    <p class="aide-champ">Indiquez seulement une zone générale, jamais l'adresse exacte (les indices servent à la trouver). Restez discret : s'exhiber à la vue de personnes qui n'ont rien demandé est un délit.</p>
 
     <label for="titre-aventure">Titre de l'aventure</label>
     <input type="text" id="titre-aventure" required>
@@ -2996,7 +3011,8 @@ formulaireAventure.addEventListener("submit", async function(e) {
             createur_pseudo: pseudo,
             titre: titre,
             description: description,
-            categorie: document.getElementById("categorie-aventure").value || null
+            categorie: document.getElementById("categorie-aventure").value || null,
+            lieu: document.getElementById("lieu-aventure").value || null
           })
         }
       );
@@ -3060,6 +3076,7 @@ let indicesEnCours = [];
 let indiceActuelIndex = 0;
 
 const NOMS_CATEGORIES = { nature: "🌲 Évasion nature", nuit: "🌙 Nuit sauvage", defi: "🧩 Défi mystère" };
+const NOMS_LIEUX = { paris_idf: "🗼 Paris & Île-de-France", aire_autoroute: "🛣️ Aire d'autoroute", autres: "🗺️ Autres" };
 function echapperTexte(t) {
   return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -3092,6 +3109,13 @@ document.querySelectorAll("#filtres-aventures button").forEach(function(b) {
   });
 });
 
+document.querySelectorAll("#filtres-lieux button").forEach(function(b) {
+  b.addEventListener("click", function() {
+    window.filtreLieuAventure = b.dataset.lieu;
+    chargerListeAventures();
+  });
+});
+
 // Affiche la liste des aventures disponibles
 async function chargerListeAventures() {
   const token = localStorage.getItem("outdoor_access_token");
@@ -3108,11 +3132,15 @@ async function chargerListeAventures() {
 
   try {
     const filtre = window.filtreCategorieAventure || "";
+    const filtreLieu = window.filtreLieuAventure || "";
     document.querySelectorAll("#filtres-aventures button").forEach(function(b) {
       b.classList.toggle("actif", b.dataset.categorie === filtre);
     });
+    document.querySelectorAll("#filtres-lieux button").forEach(function(b) {
+      b.classList.toggle("actif", b.dataset.lieu === filtreLieu);
+    });
     const response = await fetch(
-      SUPABASE_URL + "/rest/v1/Aventures?select=*&order=created_at.desc" + (filtre ? "&categorie=eq." + filtre : ""),
+      SUPABASE_URL + "/rest/v1/Aventures?select=*&order=created_at.desc" + (filtre ? "&categorie=eq." + filtre : "") + (filtreLieu ? "&lieu=eq." + filtreLieu : ""),
       {
         headers: {
           "apikey": SUPABASE_KEY,
@@ -3126,6 +3154,8 @@ async function chargerListeAventures() {
     if (aventures.length === 0) {
       conteneur.innerHTML = filtre
         ? "<p>Aucune aventure de ce type pour l'instant. <a href=\"#\" onclick=\"creerAventureCategorie('" + filtre + "');return false;\">Créez la première !</a></p>"
+        : filtreLieu
+        ? "<p>Aucune aventure dans cette zone pour l'instant. <a href=\"#creer-aventure\">Créez la première !</a></p>"
         : "<p>Aucune aventure disponible pour le moment.</p>";
       return;
     }
@@ -3136,7 +3166,8 @@ async function chargerListeAventures() {
       const carte = document.createElement("article");
       carte.className = "carte-chasse";
       carte.innerHTML =
-        (NOMS_CATEGORIES[aventure.categorie] ? '<span class="badge-categorie">' + NOMS_CATEGORIES[aventure.categorie] + "</span>" : "") +
+        (NOMS_CATEGORIES[aventure.categorie] ? '<span class="badge-categorie">' + NOMS_CATEGORIES[aventure.categorie] + "</span> " : "") +
+        (NOMS_LIEUX[aventure.lieu] ? '<span class="badge-categorie">' + NOMS_LIEUX[aventure.lieu] + "</span>" : "") +
         "<h3>" + echapperTexte(aventure.titre) + "</h3>" +
         "<p>" + echapperTexte(aventure.description || "") + "</p>" +
         "<p><em>Créée par " + echapperTexte(aventure.createur_pseudo || "un membre") + "</em></p>" +
@@ -3894,6 +3925,12 @@ function afficherResultatsAnnuaire(profils, typeRecherche) {
         const visible = conteneurPrive.style.display !== "none";
         conteneurPrive.style.display = visible ? "none" : "";
         boutonPrive.textContent = visible ? "🔓 Voir l'album privé" : "Masquer l'album privé";
+        if (visible) {
+          // Album masqué : on le vide. Pour le rouvrir, le serveur revérifie l'accès (important pour « une seule fois »).
+          conteneurPrive.innerHTML = "";
+          priveCharge = false;
+          return;
+        }
         if (!visible && !priveCharge) {
           // Ouverture de l'album : démarre la consultation pour un accès « une seule fois »
           let encoreAutorise = false;
