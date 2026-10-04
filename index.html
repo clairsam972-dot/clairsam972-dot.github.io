@@ -134,6 +134,9 @@
     .filtres-aventures { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
     .filtres-aventures button { padding: 8px 12px; font-size: 14px; }
     .filtres-aventures button.actif { background: #ff4fd8; color: #0b0710; border-color: #ff4fd8; }
+    .date-aventure { margin: 0 0 6px; font-size: .9em; opacity: .85; }
+    .message-finie { display: inline-block; margin: 0 0 8px; padding: 4px 12px; border-radius: 8px; background: #3d2448; font-weight: bold; }
+    .aventure-finie { opacity: .85; }
     .badge-categorie { display: inline-block; font-size: .8em; padding: 2px 10px; border-radius: 999px; border: 1px solid #3d2448; margin-bottom: 6px; }
     /* Fenêtre de discussion aux couleurs du site (texte lisible) */
     .modale-overlay { z-index: 9990; }
@@ -1113,6 +1116,10 @@
       <option value="autres">🗺️ Autres</option>
     </select>
     <p class="aide-champ">Indiquez seulement une zone générale, jamais l'adresse exacte (les indices servent à la trouver). Restez discret : s'exhiber à la vue de personnes qui n'ont rien demandé est un délit.</p>
+
+    <label for="date-aventure">Date et heure de l'aventure</label>
+    <input type="datetime-local" id="date-aventure" required>
+    <p class="aide-champ">Une fois cette date passée, l'aventure s'affichera comme « finie ».</p>
 
     <label for="titre-aventure">Titre de l'aventure</label>
     <input type="text" id="titre-aventure" required>
@@ -2970,6 +2977,16 @@ formulaireAventure.addEventListener("submit", async function(e) {
   await avecChargement(bouton, "Publication en cours...", async function() {
     try {
 
+      const dateSaisie = document.getElementById("date-aventure").value;
+      const dateObj = dateSaisie ? new Date(dateSaisie) : null;
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        throw new Error("Indiquez la date et l'heure de l'aventure.");
+      }
+      if (dateObj.getTime() < Date.now()) {
+        throw new Error("La date de l'aventure doit être à venir.");
+      }
+      const dateAventureValeur = dateObj.toISOString();
+
       const userResponse = await fetch(SUPABASE_URL + "/auth/v1/user", {
         headers: {
           "apikey": SUPABASE_KEY,
@@ -3012,7 +3029,8 @@ formulaireAventure.addEventListener("submit", async function(e) {
             titre: titre,
             description: description,
             categorie: document.getElementById("categorie-aventure").value || null,
-            lieu: document.getElementById("lieu-aventure").value || null
+            lieu: document.getElementById("lieu-aventure").value || null,
+            date_aventure: dateAventureValeur
           })
         }
       );
@@ -3165,17 +3183,22 @@ async function chargerListeAventures() {
     aventures.forEach(function(aventure) {
       const carte = document.createElement("article");
       carte.className = "carte-chasse";
+      const finie = aventureFinie(aventure);
+      if (finie) carte.classList.add("aventure-finie");
       carte.innerHTML =
+        (aventure.date_aventure ? '<p class="date-aventure">📅 ' + echapperTexte(new Date(aventure.date_aventure).toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "short" })) + "</p>" : "") +
+        (finie ? '<p class="message-finie">🏁 Cette aventure est finie</p>' : "") +
         (NOMS_CATEGORIES[aventure.categorie] ? '<span class="badge-categorie">' + NOMS_CATEGORIES[aventure.categorie] + "</span> " : "") +
         (NOMS_LIEUX[aventure.lieu] ? '<span class="badge-categorie">' + NOMS_LIEUX[aventure.lieu] + "</span>" : "") +
         "<h3>" + echapperTexte(aventure.titre) + "</h3>" +
         "<p>" + echapperTexte(aventure.description || "") + "</p>" +
         "<p><em>Créée par " + echapperTexte(aventure.createur_pseudo || "un membre") + "</em></p>" +
-        '<button type="button" class="primaire bouton-jouer" data-id="' + aventure.id + '">Commencer l\'aventure</button>';
+        ('<button type="button" class="primaire bouton-jouer" data-id="' + aventure.id + '">' + (finie ? "Consulter l'aventure (aperçu)" : "Commencer l'aventure") + "</button>");
 
       conteneur.appendChild(carte);
 
-      carte.querySelector(".bouton-jouer").addEventListener("click", function() {
+      const boutonJouer = carte.querySelector(".bouton-jouer");
+      if (boutonJouer) boutonJouer.addEventListener("click", function() {
         demarrerAventure(aventure);
       });
     });
@@ -3187,6 +3210,11 @@ async function chargerListeAventures() {
 }
 
 // Démarre une aventure : charge ses indices
+function aventureFinie(aventure) {
+  // Sans date (anciennes aventures) = considérée comme finie
+  return !!aventure && (!aventure.date_aventure || new Date(aventure.date_aventure).getTime() < Date.now());
+}
+
 async function demarrerAventure(aventure) {
   if (!aAcces(window.monProfilCourant)) {
     alert("Un abonnement actif est nécessaire pour participer aux aventures.");
