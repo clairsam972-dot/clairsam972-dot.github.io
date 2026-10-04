@@ -15,6 +15,7 @@
   <meta property="og:title" content="En Plein Air – Rencontres et aventures en plein air (18+)">
   <meta property="og:description" content="La communauté française pour adultes qui aiment l'adrénaline et les moments forts. Réservé aux majeurs, entre personnes consentantes.">
   <meta property="og:url" content="https://enpleinairs.fr/">
+  <link rel="preconnect" href="https://slvpdoovurqfykplefxe.supabase.co" crossorigin>
   <link rel="stylesheet" href="style.css?v=16">
   <style>
     #ecran-chargement {
@@ -1428,7 +1429,6 @@
   </p>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script>
 
 const SUPABASE_URL = "https://slvpdoovurqfykplefxe.supabase.co";
@@ -2262,6 +2262,15 @@ async function convertirHeic(file) {
   if (!estHeic) return file;
 
   if (typeof heic2any !== "function") {
+    await new Promise(function(ok) {
+      const sc = document.createElement("script");
+      sc.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+      sc.onload = ok; sc.onerror = ok;
+      document.head.appendChild(sc);
+    });
+  }
+
+  if (typeof heic2any !== "function") {
     alert("Cette photo est au format HEIC (iPhone) et n'a pas pu être convertie. Réessayez dans un instant, ou changez le format de la caméra dans Réglages > Appareil photo > Formats > « Le plus compatible ».");
     return null;
   }
@@ -2427,8 +2436,8 @@ async function creerVignetteMedia(fichier, token, userId, sousDossier, afficherA
   const vignette = document.createElement("div");
   vignette.className = "media-galerie";
   vignette.innerHTML = estVideo
-    ? '<video src="' + urlMedia + '" controls></video>'
-    : '<img src="' + urlMedia + '" alt="Média">';
+    ? '<video src="' + urlMedia + '" controls preload="metadata"></video>'
+    : '<img src="' + urlMedia + '" alt="Média" loading="lazy" decoding="async">';
 
   if (!estVideo) {
     vignette.querySelector("img").addEventListener("click", function() {
@@ -5402,6 +5411,19 @@ async function chargerVerificationsEnAttente() {
     liste.innerHTML = "<p>Impossible de charger les vérifications.</p>";
   }
 }
+</script>
+<script>
+// Accessibilité : donne un nom aux champs sans étiquette (lecteurs d'écran)
+(function(){
+  function nommer(){
+    document.querySelectorAll("input:not([type=hidden]),select,textarea").forEach(function(e){
+      if (e.getAttribute("aria-label") || e.closest("label") || (e.id && document.querySelector('label[for="' + e.id + '"]'))) return;
+      e.setAttribute("aria-label", e.placeholder || (e.type === "file" ? "Choisir un fichier" : e.type === "date" ? "Date" : "Champ de saisie"));
+    });
+  }
+  nommer();
+  setTimeout(nommer, 3000);
+})();
 </script>
 </body>
 </html>
