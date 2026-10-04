@@ -3253,6 +3253,8 @@ async function demarrerAventure(aventure) {
     aventureEnCours = aventure;
     indicesEnCours = indices;
     indiceActuelIndex = 0;
+    // Aventure finie : plus de joker
+    document.getElementById("bouton-joker").style.display = aventureFinie(aventure) ? "none" : "";
 
     document.getElementById("titre-jouer-aventure").textContent = aventure.titre;
     document.getElementById("description-jouer-aventure").textContent = aventure.description || "";
@@ -3312,6 +3314,11 @@ document.getElementById("bouton-joker").addEventListener("click", async function
 
   if (!aventureEnCours || !indicesEnCours[indiceActuelIndex]) {
     alert("Aucune énigme en cours.");
+    return;
+  }
+
+  if (aventureFinie(aventureEnCours)) {
+    alert("Cette aventure est finie : les jokers ne sont plus disponibles.");
     return;
   }
 
