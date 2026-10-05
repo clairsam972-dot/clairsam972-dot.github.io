@@ -9,6 +9,13 @@
   <meta name="rating" content="RTA-5042-1996-1400-1577-RTA">
   <meta name="theme-color" content="#0f1a14">
   <link rel="canonical" href="https://enpleinairs.fr/">
+  <meta property="og:image" content="https://enpleinairs.fr/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="En Plein Air – Rencontres et aventures en plein air (18+)">
+  <meta name="twitter:image" content="https://enpleinairs.fr/og.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"En Plein Air","url":"https://enpleinairs.fr/","inLanguage":"fr-FR","description":"Communauté française pour adultes (18+) : rencontres entre personnes consentantes et jeux de piste en extérieur."}</script>
   <meta property="og:type" content="website">
   <meta property="og:locale" content="fr_FR">
   <meta property="og:site_name" content="En Plein Air">
@@ -18,6 +25,7 @@
   <link rel="preconnect" href="https://slvpdoovurqfykplefxe.supabase.co" crossorigin>
   <link rel="stylesheet" href="style.css?v=16">
   <style>
+    .bandeau-offre { display: inline-block; margin: 0 0 18px; padding: 8px 16px; border-radius: 22px; border: 1px solid #ff4fd8; background: rgba(255,79,216,.12); font-weight: bold; font-size: .95em; }
     #ecran-chargement {
       position: fixed; inset: 0; z-index: 9999;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
@@ -421,8 +429,11 @@
       pensées pour les adultes qui aiment sortir des sentiers battus.
     </p>
 
+    <p id="bandeau-offre" class="bandeau-offre" hidden></p>
+
     <div class="actes">
-      <a class="primaire" href="#experiences">Découvrir les expériences</a>
+      <a class="primaire" href="#inscription">Je m'inscris</a>
+      <a class="contour" href="#experiences" style="display:inline-block;text-decoration:none">Découvrir les expériences</a>
       <button class="contour" onclick="allerCreerAventure()">Créer une aventure</button>
     </div>
   </div>
@@ -5430,6 +5441,23 @@ async function chargerVerificationsEnAttente() {
   }
   nommer();
   setTimeout(nommer, 3000);
+})();
+</script>
+<script>
+// Compteur de l'offre de lancement (places restantes)
+(function(){
+  fetch(SUPABASE_URL + "/rest/v1/rpc/offre_lancement_places", {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+    body: "{}"
+  }).then(function(r){ return r.ok ? r.json() : null; }).then(function(n){
+    const b = document.getElementById("bandeau-offre");
+    if (!b || typeof n !== "number") return;
+    if (n > 0) {
+      b.textContent = "🎁 Offre de lancement : il reste " + n + " place" + (n > 1 ? "s" : "") + " pour 1 an offert (hommes et personnes trans)";
+      b.hidden = false;
+    }
+  }).catch(function(){});
 })();
 </script>
 </body>
