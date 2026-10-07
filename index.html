@@ -143,6 +143,10 @@
     .filtres-aventures { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
     .filtres-aventures button { padding: 8px 12px; font-size: 14px; }
     .filtres-aventures button.actif { background: #ff4fd8; color: #0b0710; border-color: #ff4fd8; }
+    #question-source { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 900; max-width: 460px; margin: 0 auto; padding: 16px; border-radius: 16px; border: 1px solid #ff4fd8; background: rgba(20,10,30,.96); color: #f5f2f7; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+    #question-source p { margin: 0 0 10px; }
+    #question-source .choix-source { display: flex; flex-direction: column; gap: 8px; }
+    #question-source .plus-tard { margin-top: 8px; background: none; border: none; color: #cdbfd6; text-decoration: underline; cursor: pointer; font-size: .9em; }
     .date-aventure { margin: 0 0 6px; font-size: .9em; opacity: .85; }
     .message-finie { display: inline-block; margin: 0 0 8px; padding: 4px 12px; border-radius: 8px; background: #3d2448; font-weight: bold; }
     .aventure-finie { opacity: .85; }
@@ -5402,10 +5406,13 @@ async function chargerVerificationsEnAttente() {
         const b = document.createElement("button");
         b.type = "button"; b.className = choix[2]; b.textContent = choix[1];
         b.addEventListener("click", async function() {
-          const question = choix[0] === "validee"
-            ? "Valider le compte de " + (c.pseudo || "ce membre") + " ? Ses documents seront supprimés."
-            : "Refuser le compte de " + (c.pseudo || "ce membre") + " ? Ses documents seront supprimés.";
-          if (!confirm(question)) return;
+          const nomMembre = c.pseudo || "ce membre";
+          if (choix[0] === "validee") {
+            if (!confirm("Avez-vous bien contrôlé la pièce d'identité de " + nomMembre + " dans Supabase (Storage > verifications) ?\n\nSi vous validez, ses documents seront supprimés définitivement et vous ne pourrez plus les revoir.")) return;
+            if (!confirm("Dernière confirmation : valider le compte de " + nomMembre + " ?")) return;
+          } else {
+            if (!confirm("Refuser le compte de " + nomMembre + " ? Ses documents seront supprimés.")) return;
+          }
           b.disabled = true;
           try {
             const rep = await fetch(SUPABASE_URL + "/functions/v1/decision-verification", {
@@ -5429,6 +5436,52 @@ async function chargerVerificationsEnAttente() {
     liste.innerHTML = "<p>Impossible de charger les vérifications.</p>";
   }
 }
+</script>
+<div id="question-source" hidden role="dialog" aria-label="Comment nous avez-vous connus ?">
+  <p><strong>Comment nous avez-vous connus ?</strong></p>
+  <div class="choix-source">
+    <button type="button" class="primaire" data-source="bouche_a_oreille">🗣️ Bouche à oreille</button>
+    <button type="button" class="primaire" data-source="reseaux_sociaux">📱 Réseaux sociaux</button>
+    <button type="button" class="primaire" data-source="recherche_google">🔎 Recherche Google</button>
+  </div>
+  <button type="button" class="plus-tard" id="source-plus-tard">Plus tard</button>
+</div>
+<script>
+// Question « Comment nous avez-vous connus ? » (une seule réponse par membre)
+(function(){
+  const bloc = document.getElementById("question-source");
+  let termine = false;
+  function masquer(){ bloc.hidden = true; }
+  async function verifier(){
+    if (termine) return;
+    const token = localStorage.getItem("outdoor_access_token");
+    if (!token || !window.monProfilCourant) return;
+    try { if (sessionStorage.getItem("source_plus_tard") === "1") { termine = true; return; } } catch (e) {}
+    termine = true;
+    try {
+      const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/ma_source_decouverte", { method: "POST", headers: enTetesMembre(), body: "{}" });
+      if (!r.ok) return;
+      const deja = await r.json();
+      if (!deja) bloc.hidden = false;
+    } catch (e) { console.error(e); }
+  }
+  bloc.querySelectorAll("[data-source]").forEach(function(b){
+    b.addEventListener("click", async function(){
+      b.disabled = true;
+      try {
+        const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/enregistrer_source_decouverte", { method: "POST", headers: enTetesMembre(), body: JSON.stringify({ p_source: b.dataset.source }) });
+        if (!r.ok) throw new Error(await r.text());
+        masquer();
+        afficherAlerte("Merci pour votre réponse ! 🌿", "info");
+      } catch (e) { b.disabled = false; alert("Réponse non enregistrée, réessayez."); }
+    });
+  });
+  document.getElementById("source-plus-tard").addEventListener("click", function(){
+    try { sessionStorage.setItem("source_plus_tard", "1"); } catch (e) {}
+    masquer();
+  });
+  const minuteur = setInterval(function(){ verifier(); if (termine) clearInterval(minuteur); }, 2000);
+})();
 </script>
 <script>
 // Accessibilité : donne un nom aux champs sans étiquette (lecteurs d'écran)
