@@ -200,6 +200,19 @@
     .media-galerie video { width: 260px; max-width: 100%; border-radius: 8px; display: block; }
     .media-galerie .bouton-supprimer-media { margin-top: 6px; }
     .aide-champ { font-size: .85em; opacity: .75; margin: 4px 0 12px; }
+    .en-ligne-boite { border: 1px solid rgba(128,128,128,.35); border-radius: 12px; padding: 12px 14px; margin: 12px 0 16px; }
+    .en-ligne-titre { margin: 0 0 8px; }
+    .point-vert { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #2ecc71; margin-right: 4px; }
+    .en-ligne-liste { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .en-ligne-pastille { border: 1px solid rgba(128,128,128,.4); border-radius: 999px; padding: 3px 10px; font-size: .9em; }
+    .en-ligne-visibilite { font-size: .85em; opacity: .8; display: flex; gap: 6px; align-items: center; }
+    .commentaires-zone { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(128,128,128,.3); }
+    .commentaire { margin: 0 0 10px; font-size: .95em; }
+    .commentaire .commentaire-meta { font-size: .8em; opacity: .7; display: block; }
+    .commentaire-texte { white-space: pre-line; overflow-wrap: anywhere; }
+    .commentaire-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .commentaire-form input { flex: 1 1 200px; min-width: 0; }
+    .bouton-commentaires { margin-top: 6px; }
     .a-completer { background: #f1c40f; color: #111; padding: 0 4px; border-radius: 3px; }
     section.page-legale { display: none; }
     body.plein-ecran section.page-legale.vue-plein-ecran { display: block; }
@@ -1211,6 +1224,12 @@
   <h2>Chat commun</h2>
   <p>Le salon de discussion ouvert à tous les abonnés.</p>
 
+  <div id="membres-en-ligne" class="en-ligne-boite" style="display:none;">
+    <p class="en-ligne-titre"><span class="point-vert" aria-hidden="true"></span> <strong id="en-ligne-titre">En ligne maintenant</strong></p>
+    <div id="en-ligne-liste" class="en-ligne-liste" aria-live="polite"></div>
+    <label class="en-ligne-visibilite"><input type="checkbox" id="en-ligne-visible" checked> Apparaître dans la liste des membres en ligne</label>
+  </div>
+
   <div id="chat-commun-verrou" style="display:none;">
     <p>Un abonnement actif (14,90 €/mois) est nécessaire pour accéder au chat commun.</p>
     <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
@@ -2016,6 +2035,7 @@ async function afficherProfil(accessToken, userEmail, userId) {
   await chargerAlbum(idUtilisateurCourant, "public", "galerie-medias-public", true);
   await chargerAlbum(idUtilisateurCourant, "prive", "galerie-medias-prive", true);
   chargerHistoires();
+  demarrerPresence();
   mettreAJourBadgeMessages();
   chargerBlocages();
   chargerDemandesAlbum();
@@ -3642,6 +3662,7 @@ async function deconnexion() {
   document.getElementById("photo-principale").style.display = "none";
   document.getElementById("placeholder-photo").style.display = "";
   mettreAJourNavigation(false);
+  arreterPresence();
   chargerHistoires();
   window.location.hash = "connexion";
   alert("Vous êtes déconnecté.");
@@ -4612,6 +4633,15 @@ async function chargerHistoires() {
     if (!response.ok) throw new Error(await response.text());
     const histoires = await response.json();
 
+    // Nombre de commentaires par histoire (réservé aux membres connectés)
+    const comptesCommentaires = {};
+    if (token && idUtilisateurCourant) {
+      try {
+        const rc = await fetch(SUPABASE_URL + "/rest/v1/rpc/commentaires_comptes", { method: "POST", headers: enTetesMembre(), body: "{}" });
+        if (rc.ok) (await rc.json()).forEach(function(l) { comptesCommentaires[l.histoire_id] = Number(l.nb); });
+      } catch (e) { console.error(e); }
+    }
+
     conteneur.innerHTML = "";
     if (histoires.length === 0) {
       conteneur.innerHTML = "<p>Aucune histoire pour l'instant. Sois le premier à raconter la tienne !</p>";
@@ -4653,6 +4683,32 @@ async function chargerHistoires() {
         carte.appendChild(supprimer);
       }
 
+      // Commentaires : lecture et écriture réservées aux membres connectés et validés
+      if (idUtilisateurCourant) {
+        const boutonCommentaires = document.createElement("button");
+        boutonCommentaires.type = "button";
+        boutonCommentaires.className = "contour bouton-commentaires";
+        const nb = comptesCommentaires[h.id] || 0;
+        boutonCommentaires.textContent = "💬 Commentaires" + (nb ? " (" + nb + ")" : "");
+        const zoneCommentaires = document.createElement("div");
+        zoneCommentaires.className = "commentaires-zone";
+        zoneCommentaires.style.display = "none";
+        boutonCommentaires.setAttribute("aria-expanded", "false");
+        boutonCommentaires.addEventListener("click", function() {
+          const ouvert = zoneCommentaires.style.display !== "none";
+          zoneCommentaires.style.display = ouvert ? "none" : "";
+          boutonCommentaires.setAttribute("aria-expanded", ouvert ? "false" : "true");
+          if (!ouvert) chargerCommentaires(h.id, zoneCommentaires, boutonCommentaires);
+        });
+        carte.appendChild(boutonCommentaires);
+        carte.appendChild(zoneCommentaires);
+      } else {
+        const invite = document.createElement("p");
+        invite.className = "aide-champ";
+        invite.textContent = "Connectez-vous pour lire et écrire des commentaires.";
+        carte.appendChild(invite);
+      }
+
       conteneur.appendChild(carte);
     });
   } catch (error) {
@@ -4660,6 +4716,155 @@ async function chargerHistoires() {
     conteneur.innerHTML = "<p>Impossible de charger les histoires.</p>";
   }
 }
+
+// Commentaires sous une histoire
+async function chargerCommentaires(histoireId, zone, bouton) {
+  zone.innerHTML = "<p class=\"aide-champ\">Chargement...</p>";
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/commentaires_histoire", {
+      method: "POST", headers: enTetesMembre(), body: JSON.stringify({ p_histoire: histoireId })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const liste = await r.json();
+    zone.innerHTML = "";
+
+    if (liste.length === 0) {
+      const vide = document.createElement("p");
+      vide.className = "aide-champ";
+      vide.textContent = "Aucun commentaire pour l'instant. Soyez le premier à réagir, avec bienveillance.";
+      zone.appendChild(vide);
+    }
+
+    liste.forEach(function(c) {
+      const p = document.createElement("p");
+      p.className = "commentaire";
+      const meta = document.createElement("span");
+      meta.className = "commentaire-meta";
+      meta.textContent = (c.pseudonyme || "Membre") + " · " + new Date(c.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      const texte = document.createElement("span");
+      texte.className = "commentaire-texte";
+      texte.textContent = c.contenu;
+      p.appendChild(meta);
+      p.appendChild(texte);
+      if (c.peut_supprimer) {
+        const retirer = document.createElement("button");
+        retirer.type = "button";
+        retirer.className = "contour";
+        retirer.style.cssText = "margin-left:8px;padding:2px 8px;font-size:.8em;";
+        retirer.textContent = "Retirer";
+        retirer.addEventListener("click", async function() {
+          if (!confirm("Retirer ce commentaire ?")) return;
+          await fetch(SUPABASE_URL + "/rest/v1/rpc/retirer_commentaire", { method: "POST", headers: enTetesMembre(), body: JSON.stringify({ p_id: c.id }) });
+          await chargerCommentaires(histoireId, zone, bouton);
+        });
+        p.appendChild(retirer);
+      }
+      zone.appendChild(p);
+    });
+
+    if (bouton) bouton.textContent = "💬 Commentaires" + (liste.length ? " (" + liste.length + ")" : "");
+
+    const form = document.createElement("form");
+    form.className = "commentaire-form";
+    const champ = document.createElement("input");
+    champ.type = "text";
+    champ.maxLength = 500;
+    champ.placeholder = "Écrire un commentaire...";
+    champ.setAttribute("aria-label", "Votre commentaire");
+    const envoyer = document.createElement("button");
+    envoyer.type = "submit";
+    envoyer.className = "primaire";
+    envoyer.textContent = "Publier";
+    form.appendChild(champ);
+    form.appendChild(envoyer);
+    form.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      const contenu = champ.value.trim();
+      if (!contenu) return;
+      envoyer.disabled = true;
+      try {
+        const rep = await fetch(SUPABASE_URL + "/rest/v1/rpc/ajouter_commentaire", {
+          method: "POST", headers: enTetesMembre(), body: JSON.stringify({ p_histoire: histoireId, p_contenu: contenu })
+        });
+        if (!rep.ok) {
+          let msg = "Impossible de publier le commentaire.";
+          try { const j = await rep.json(); if (j && j.message) msg = j.message; } catch (x) {}
+          alert(msg);
+          return;
+        }
+        await chargerCommentaires(histoireId, zone, bouton);
+      } finally {
+        envoyer.disabled = false;
+      }
+    });
+    zone.appendChild(form);
+  } catch (error) {
+    console.error("Erreur commentaires :", error);
+    zone.innerHTML = "<p class=\"aide-champ\">Impossible de charger les commentaires.</p>";
+  }
+}
+
+// Membres en ligne : battement toutes les 45 s, visible si dernière activité < 3 min
+let intervallePresence = null;
+
+async function battementEtListe() {
+  if (!idUtilisateurCourant || document.hidden) return;
+  try {
+    await fetch(SUPABASE_URL + "/rest/v1/rpc/battement_presence", { method: "POST", headers: enTetesMembre(), body: "{}" });
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/membres_en_ligne", { method: "POST", headers: enTetesMembre(), body: "{}" });
+    if (!r.ok) return;
+    afficherMembresEnLigne(await r.json());
+  } catch (e) { console.error(e); }
+}
+
+function afficherMembresEnLigne(liste) {
+  const boite = document.getElementById("membres-en-ligne");
+  const zone = document.getElementById("en-ligne-liste");
+  const nav = document.getElementById("nav-chat-commun");
+  boite.style.display = "";
+  document.getElementById("en-ligne-titre").textContent = liste.length <= 1
+    ? "En ligne maintenant"
+    : "En ligne maintenant (" + liste.length + ")";
+  zone.innerHTML = "";
+  if (liste.length === 0) {
+    const p = document.createElement("span");
+    p.className = "aide-champ";
+    p.textContent = "Personne d'autre pour le moment.";
+    zone.appendChild(p);
+  }
+  liste.forEach(function(m) {
+    const s = document.createElement("span");
+    s.className = "en-ligne-pastille";
+    s.textContent = (m.moi ? "Vous · " : "") + m.pseudonyme;
+    zone.appendChild(s);
+  });
+  const autres = liste.filter(function(m) { return !m.moi; }).length;
+  nav.textContent = autres > 0 ? "Chat commun · 🟢 " + autres : "Chat commun";
+}
+
+async function demarrerPresence() {
+  if (intervallePresence) return;
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/ma_visibilite_presence", { method: "POST", headers: enTetesMembre(), body: "{}" });
+    if (r.ok) document.getElementById("en-ligne-visible").checked = (await r.json()) !== false;
+  } catch (e) { console.error(e); }
+  battementEtListe();
+  intervallePresence = setInterval(battementEtListe, 45000);
+}
+
+function arreterPresence() {
+  if (intervallePresence) { clearInterval(intervallePresence); intervallePresence = null; }
+  document.getElementById("membres-en-ligne").style.display = "none";
+  document.getElementById("nav-chat-commun").textContent = "Chat commun";
+}
+
+document.getElementById("en-ligne-visible").addEventListener("change", async function() {
+  await fetch(SUPABASE_URL + "/rest/v1/rpc/regler_visibilite_presence", {
+    method: "POST", headers: enTetesMembre(), body: JSON.stringify({ p_visible: this.checked })
+  });
+  battementEtListe();
+});
+document.addEventListener("visibilitychange", function() { if (!document.hidden) battementEtListe(); });
 
 async function supprimerHistoire(id) {
   if (!confirm("Supprimer cette histoire ?")) return;
