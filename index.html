@@ -315,6 +315,13 @@
     <p id="message-localisation"></p>
   </div>
 
+  <div class="carte" id="remerciement-premiers" style="display:none;">
+    <h3>Merci à nos 20 premiers membres 🎁</h3>
+    <p>Vous faites partie des 20 premiers inscrits et vous bénéficiez d'<strong>une année gratuite</strong> : aucun paiement n'est demandé pendant cette période.</p>
+    <p>Nous recherchons activement des <strong>femmes</strong> afin que vous profitiez pleinement et en priorité des aventures. Merci pour votre patience et votre compréhension : votre confiance fait vivre En Plein Air.</p>
+    <p class="aide-champ"><em>L'équipe En Plein Air</em></p>
+  </div>
+
   <div class="carte" id="carte-abonnement">
     <p><strong>Abonnement :</strong> <span id="statut-abonnement">Chargement...</span></p>
     <button type="button" class="primaire" id="bouton-abonnement" style="display:none;">S'abonner — 14,90 €/mois</button>
@@ -500,7 +507,7 @@
       <li><span class="emoji">🙈</span><div><strong>Jamais sous le nez des passants</strong><span class="texte">L'adrénaline oui, gêner les autres non : on choisit des coins discrets et on n'impose jamais le spectacle à ceux qui n'ont rien demandé (c'est aussi ce que dit la loi 😉).</span></div></li>
       <li><span class="emoji">🤫</span><div><strong>Discrétion absolue</strong><span class="texte">Pseudonyme obligatoire, ta position n'est jamais affichée (juste une distance en km) et ton album privé ne regarde que toi.</span></div></li>
       <li><span class="emoji">🛡️</span><div><strong>Une team bienveillante</strong><span class="texte">Un membre lourd ? Bloque-le ou signale-le en un clic, on s'en occupe.</span></div></li>
-      <li><span class="emoji">💳</span><div><strong>Côté porte-monnaie</strong><span class="texte">Inscription gratuite. Accès complet offert aux femmes et aux couples. Pour les hommes et les personnes trans : 14,90 €/mois sans engagement, et la première année est offerte aux 20 premiers inscrits !</span></div></li>
+      <li><span class="emoji">💳</span><div><strong>Côté porte-monnaie</strong><span class="texte">Inscription gratuite. Accès complet offert aux femmes et aux couples. Pour les hommes et les personnes trans : 14,90 €/mois sans engagement. Les 20 places « première année offerte » sont toutes prises : merci à nos 20 premiers membres !</span></div></li>
     </ul>
 
     <div class="accueil-actions">
@@ -651,7 +658,7 @@
     <h3>Comment ça marche côté tarifs ?</h3>
     <p>✅ Inscription gratuite pour tout le monde.</p>
     <p>✅ Créer et proposer une aventure : gratuit.</p>
-    <p>🔑 Accès à toutes les aventures : gratuit pour les femmes et les couples, 14,90 €/mois pour les hommes et les personnes trans (première année offerte aux 20 premiers inscrits).</p>
+    <p>🔑 Accès à toutes les aventures : gratuit pour les femmes et les couples, 14,90 €/mois pour les hommes et les personnes trans (la première année offerte aux 20 premiers inscrits est désormais épuisée).</p>
     <p>🃏 Bloqué sur une énigme ? Un joker débloque la réponse pour 10€.</p>
   </article>
 </section>
@@ -770,6 +777,10 @@
     L'inscription est gratuite. Choisissez votre profil pour rejoindre la communauté.
   </p>
 
+  <p id="info-inscriptions-fermees" class="bandeau-offre" hidden>
+    🌿 Actuellement, l'inscription est ouverte aux femmes, aux couples et aux personnes trans. L'inscription des hommes seuls est momentanément fermée, afin de préserver un équilibre raisonnable entre les membres. Elle rouvrira dès que l'équilibre le permettra.
+  </p>
+
   <div class="cartes-inscription">
 
     <article class="carte-inscription">
@@ -779,10 +790,10 @@
       <a class="primaire" href="#formulaire-couple">Choisir Couple</a>
     </article>
 
-    <article class="carte-inscription">
+    <article class="carte-inscription" data-profil-carte="homme">
       <div class="icone">👨</div>
       <h3>Homme</h3>
-      <p>Rejoignez gratuitement Outdoor Secret.</p>
+      <p>Abonnement 14,90 €/mois, sans engagement.</p>
       <a class="primaire" href="#formulaire-homme">Choisir Homme</a>
     </article>
 
@@ -793,10 +804,10 @@
       <a class="primaire" href="#formulaire-femme">Choisir Femme</a>
     </article>
 
-    <article class="carte-inscription">
+    <article class="carte-inscription" data-profil-carte="trans">
       <div class="icone">🏳️‍⚧️</div>
       <h3>Trans</h3>
-      <p>Rejoignez gratuitement Outdoor Secret.</p>
+      <p>Abonnement 14,90 €/mois, sans engagement.</p>
       <a class="primaire" href="#formulaire-trans">Choisir Trans</a>
     </article>
 
@@ -1425,7 +1436,7 @@
   <h3>5. Offres payantes</h3>
   <p>
     <strong>Accès aux aventures et au chat commun :</strong> gratuit pour les profils Femme et Couple ; abonnement de 14,90 € TTC par mois pour les profils Homme et Trans, sans engagement, reconduit automatiquement chaque mois. Le type de profil choisi à l'inscription ne peut pas être modifié ensuite ; une fausse déclaration de profil entraîne la suppression du compte. La création d'aventures reste gratuite pour tous.<br>
-    <strong>Offre de lancement :</strong> la première année d'accès est offerte aux 20 premiers membres de profil Homme ou Trans inscrits depuis le lancement de l'offre, dans la limite des places disponibles. Elle court à compter de l'inscription ; aucun paiement n'est demandé pendant cette période, et aucun prélèvement n'est effectué automatiquement à son terme : l'accès aux aventures est alors conditionné à la souscription de l'abonnement.<br>
+    <strong>Offre de lancement (désormais épuisée) :</strong> la première année d'accès a été offerte aux 20 premiers membres de profil Homme ou Trans inscrits depuis le lancement de l'offre. Elle court à compter de l'inscription ; aucun paiement n'est demandé pendant cette période, et aucun prélèvement n'est effectué automatiquement à son terme : l'accès aux aventures est alors conditionné à la souscription de l'abonnement.<br>
     <strong>Joker :</strong> 10 € TTC par joker, paiement unique, pour révéler la réponse d'un indice.<br>
     Les paiements sont traités par Stripe ; nous n'avons jamais accès à vos coordonnées bancaires.
   </p>
@@ -1901,6 +1912,19 @@ formulaires.forEach(function(config) {
       return;
     }
 
+    // Inscriptions Homme / Trans parfois fermées (équilibre entre les membres)
+    try {
+      const ro = await fetch(SUPABASE_URL + "/rest/v1/rpc/inscription_ouverte", {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_profil: config.profil })
+      });
+      if (ro.ok && (await ro.json()) === false) {
+        alert("L'inscription des hommes seuls est momentanément fermée, afin de préserver un équilibre entre les membres. Merci de votre compréhension.");
+        return;
+      }
+    } catch (e) { console.error(e); }
+
     await avecChargement(bouton, "Création en cours...", async function() {
       try {
 
@@ -2122,6 +2146,7 @@ function aAcces(profil) {
 function afficherStatutAbonnement(profil) {
   const statut = document.getElementById("statut-abonnement");
   const bouton = document.getElementById("bouton-abonnement");
+  document.getElementById("remerciement-premiers").style.display = offreLancementActive(profil) ? "" : "none";
 
   if (accesGratuit(profil) && !profil.abonnement_actif) {
     statut.textContent = "Gratuit ✅ — accès complet offert aux profils Femme et Couple";
@@ -5745,9 +5770,32 @@ async function chargerVerificationsEnAttente() {
     if (!b || typeof n !== "number") return;
     if (n > 0) {
       b.textContent = "🎁 Offre de lancement : il reste " + n + " place" + (n > 1 ? "s" : "") + " pour 1 an offert (hommes et personnes trans)";
-      b.hidden = false;
+    } else {
+      b.textContent = "✅ Les 20 places « 1 an offert » sont toutes prises. Merci à nos 20 premiers membres !";
     }
+    b.hidden = false;
   }).catch(function(){});
+
+  // Inscriptions Homme / Trans fermées ? On adapte les cartes d'inscription.
+  const entetes = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" };
+  fetch(SUPABASE_URL + "/rest/v1/rpc/inscription_ouverte", { method: "POST", headers: entetes, body: JSON.stringify({ p_profil: "homme" }) })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(ouverte){
+      if (ouverte !== false) return;
+      const info = document.getElementById("info-inscriptions-fermees");
+      if (info) info.hidden = false;
+      ["homme"].forEach(function(profil) {
+        const carte = document.querySelector('[data-profil-carte="' + profil + '"]');
+        if (carte) {
+          const lien = carte.querySelector("a");
+          const texte = carte.querySelector("p");
+          if (texte) texte.textContent = "Inscription des hommes seuls momentanément fermée, afin de préserver l'équilibre entre les membres.";
+          if (lien) lien.remove();
+        }
+        const bloc = document.getElementById("formulaire-" + profil);
+        if (bloc) bloc.remove();
+      });
+    }).catch(function(){});
 })();
 </script>
 </body>
