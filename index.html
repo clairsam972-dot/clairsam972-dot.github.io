@@ -3367,19 +3367,19 @@ function afficherRecapVictoire(r, termine) {
     h += "<p>📅 Votre rendez-vous : <strong>" + echapperTexte(quand) + "</strong></p>";
     h += "<p>Un e-mail de confirmation vient de vous être envoyé.</p>";
   }
-  if (r.indices && r.indices.length) {
-    h += "<p><strong>🧭 Les indications que vous avez trouvées :</strong></p><ol>";
-    r.indices.forEach(function(i) {
-      h += "<li>" + echapperTexte(i.indice) + " → <strong>" + echapperTexte(i.reponse) + "</strong></li>";
-    });
-    h += "</ol>";
-  }
   h += "<p><strong>📝 Résumé de l'aventure</strong></p>";
   h += "<p><strong>" + echapperTexte(r.titre || "") + "</strong><br>";
   h += echapperTexte((NOMS_CATEGORIES[r.categorie] || r.categorie || "") + " · " + (NOMS_LIEUX[r.lieu] || r.lieu || "")) + "<br>";
   if (r.createur) h += "Créée par " + echapperTexte(r.createur) + "<br>";
   h += "</p>";
   if (r.description) h += '<p style="white-space:pre-wrap;">' + echapperTexte(r.description) + "</p>";
+  if (r.indices && r.indices.length) {
+    h += "<p><strong>🧭 Les indices que vous avez trouvés :</strong></p><ol>";
+    r.indices.forEach(function(i) {
+      h += "<li>" + echapperTexte(i.indice) + " → <strong>" + echapperTexte(i.reponse) + "</strong></li>";
+    });
+    h += "</ol>";
+  }
   zone.innerHTML = h;
 }
 function echapperTexte(t) {
