@@ -1161,7 +1161,7 @@
     <p id="texte-indice"></p>
 
     <input type="text" id="reponse-utilisateur" placeholder="Votre réponse..." autocomplete="off" autocapitalize="none">
-    <p class="aide-champ">Pas de panique : majuscules, accents et petites fautes de frappe sont acceptés.</p>
+    <p class="aide-champ">Pas de panique : majuscules, accents et petites fautes de frappe sont acceptés. Vous avez 2 essais par indice.</p>
     <button type="button" class="primaire" id="bouton-valider-reponse">Valider</button>
     <button type="button" class="contour" id="bouton-joker">🃏 Utiliser un joker — 10€</button>
     <p id="message-jeu"></p>
@@ -3341,7 +3341,7 @@ async function demarrerAventure(aventure) {
 
   try {
     const response = await fetch(
-      SUPABASE_URL + "/rest/v1/Indices?aventure_id=eq." + aventure.id + "&order=ordre.asc",
+      SUPABASE_URL + "/rest/v1/Indices?select=id,aventure_id,ordre,indice&aventure_id=eq." + aventure.id + "&order=ordre.asc",
       {
         headers: {
           "apikey": SUPABASE_KEY,
@@ -3381,9 +3381,31 @@ async function demarrerAventure(aventure) {
   }
 }
 
+// 2 essais par indice : ensuite, seul le joker permet de continuer.
+// Tout est vérifié CÔTÉ SERVEUR (fonction « verifier-reponse ») : les réponses ne sont plus lisibles par les membres.
+const MESSAGE_PLUS_ESSAIS = "Vous avez utilisé vos 2 essais pour cet indice. Pour continuer, utilisez le joker (10 €).";
+
+async function appelVerifierReponse(corps) {
+  const token = localStorage.getItem("outdoor_access_token");
+  const reponse = await fetch(SUPABASE_URL + "/functions/v1/verifier-reponse", {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify(corps)
+  });
+  const donnees = await reponse.json().catch(function() { return {}; });
+  return { status: reponse.status, ok: reponse.ok, donnees: donnees };
+}
+
 function afficherIndiceActuel() {
   const indice = indicesEnCours[indiceActuelIndex];
   document.getElementById("texte-indice").textContent = indice.indice;
+  const idAffiche = indice.id;
+  appelVerifierReponse({ action: "etat", indice_id: indice.id }).then(function(r) {
+    const courant = indicesEnCours[indiceActuelIndex];
+    if (r.ok && r.donnees.bloque && courant && courant.id === idAffiche) {
+      document.getElementById("message-jeu").textContent = MESSAGE_PLUS_ESSAIS;
+    }
+  }).catch(function() {});
 }
 
 // Comparaison tolérante des réponses : insensible aux majuscules, accents, tirets,
@@ -3485,26 +3507,53 @@ function reponseAcceptable(donnee, attendue) {
   return trouves >= motsAttendus.length - manquantsTolerables && trouves > 0;
 }
 
-// Vérifie la réponse saisie
-document.getElementById("bouton-valider-reponse").addEventListener("click", function() {
+// Vérifie la réponse saisie (vérification faite par le serveur)
+document.getElementById("bouton-valider-reponse").addEventListener("click", async function() {
+  const bouton = this;
   const reponseDonnee = document.getElementById("reponse-utilisateur").value.trim().toLowerCase();
-  const bonneReponse = indicesEnCours[indiceActuelIndex].reponse;
+  const indice = indicesEnCours[indiceActuelIndex];
+  if (!indice || bouton.dataset.enCours === "1") return;
+  if (!reponseDonnee) {
+    document.getElementById("message-jeu").textContent = "Saisissez une réponse.";
+    return;
+  }
 
-  if (reponseAcceptable(reponseDonnee, bonneReponse)) {
+  bouton.dataset.enCours = "1";
+  bouton.disabled = true;
+  let resultat;
+  try {
+    resultat = await appelVerifierReponse({ action: "verifier", indice_id: indice.id, reponse: reponseDonnee });
+  } catch (e) {
+    resultat = null;
+  } finally {
+    bouton.dataset.enCours = "";
+    bouton.disabled = false;
+  }
 
+  const message = document.getElementById("message-jeu");
+  if (!resultat || !resultat.ok) {
+    message.textContent = "Vérification impossible pour le moment. Réessayez dans un instant.";
+    return;
+  }
+  const d = resultat.donnees;
+
+  if (d.ok) {
     indiceActuelIndex++;
 
     if (indiceActuelIndex < indicesEnCours.length) {
-      document.getElementById("message-jeu").textContent = "Bonne réponse ! Voici l'indice suivant.";
+      message.textContent = "Bonne réponse ! Voici l'indice suivant.";
       document.getElementById("reponse-utilisateur").value = "";
       afficherIndiceActuel();
     } else {
       document.getElementById("zone-indice").style.display = "none";
       document.getElementById("zone-victoire").style.display = "block";
     }
-
+  } else if (d.bloque) {
+    message.textContent = MESSAGE_PLUS_ESSAIS;
+  } else if (typeof d.restant === "number" && d.restant > 0 && d.restant < 2) {
+    message.textContent = "Mauvaise réponse. Il vous reste " + d.restant + " essai" + (d.restant > 1 ? "s" : "") + ".";
   } else {
-    document.getElementById("message-jeu").textContent = "Mauvaise réponse, réessayez.";
+    message.textContent = "Mauvaise réponse, réessayez.";
   }
 });
 
@@ -3552,14 +3601,15 @@ document.getElementById("bouton-joker").addEventListener("click", async function
 
       if (response.status === 409 && data.deja_paye) {
         // Joker déjà payé pour cette énigme : on donne la réponse sans refaire payer
-        const reponse = indicesEnCours[indiceActuelIndex].reponse;
+        const rj = await appelVerifierReponse({ action: "joker", indice_id: indicesEnCours[indiceActuelIndex].id });
+        const reponse = rj.ok ? rj.donnees.reponse : "";
         document.getElementById("reponse-utilisateur").value = reponse;
-        document.getElementById("message-jeu").textContent = "Joker déjà acheté : réponse « " + reponse + " ».";
+        document.getElementById("message-jeu").textContent = reponse ? "Joker déjà acheté : réponse « " + reponse + " »." : "Joker déjà acheté, mais la réponse n'a pas pu être chargée. Réessayez.";
         return;
       }
 
       if (!response.ok || !data.url) {
-        alert(data.error || "Impossible de démarrer le paiement du joker. Réessayez plus tard.");
+        alert((data.error || "Impossible de démarrer le paiement du joker. Réessayez plus tard.") + (data.code ? " [" + data.code + "]" : ""));
         return;
       }
 
@@ -5233,10 +5283,10 @@ async function gererRetourJoker() {
     console.log("[joker] paye:", paye, "indiceActuelIndex:", indiceActuelIndex);
 
     if (paye) {
-      const reponse = indicesEnCours[indiceActuelIndex].reponse;
+      const rj = await appelVerifierReponse({ action: "joker", indice_id: indicesEnCours[indiceActuelIndex].id });
+      const reponse = rj.ok ? rj.donnees.reponse : "";
       document.getElementById("reponse-utilisateur").value = reponse;
-      document.getElementById("message-jeu").textContent = "Joker activé : réponse « " + reponse + " ».";
-      console.log("[joker] réponse affichée:", reponse);
+      document.getElementById("message-jeu").textContent = reponse ? "Joker activé : réponse « " + reponse + " »." : "Joker activé, mais la réponse n'a pas pu être chargée. Réessayez.";
     } else {
       document.getElementById("message-jeu").textContent = "Paiement en cours de confirmation, réessayez dans un instant.";
     }
