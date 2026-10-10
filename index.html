@@ -1150,7 +1150,8 @@
     <p><strong>Indice :</strong></p>
     <p id="texte-indice"></p>
 
-    <input type="text" id="reponse-utilisateur" placeholder="Votre réponse...">
+    <input type="text" id="reponse-utilisateur" placeholder="Votre réponse..." autocomplete="off" autocapitalize="none">
+    <p class="aide-champ">Pas de panique : majuscules, accents et petites fautes de frappe sont acceptés.</p>
     <button type="button" class="primaire" id="bouton-valider-reponse">Valider</button>
     <button type="button" class="contour" id="bouton-joker">🃏 Utiliser un joker — 10€</button>
     <p id="message-jeu"></p>
@@ -3040,6 +3041,7 @@ boutonAjouterIndice.addEventListener("click", function() {
     '<input type="text" class="champ-indice" required>' +
     '<label>Réponse à deviner</label>' +
     '<input type="text" class="champ-reponse" required>' +
+    '<p class="aide-champ">Indiquez la réponse la plus simple. Majuscules, accents, petites fautes de frappe et écritures différentes d'un numéro (« 12 », « 12e », « douze ») seront acceptés.</p>' +
     '<button type="button" class="contour bouton-supprimer-indice">Supprimer cet indice</button>';
 
   listeIndices.appendChild(bloc);
@@ -3371,12 +3373,111 @@ function afficherIndiceActuel() {
   document.getElementById("texte-indice").textContent = indice.indice;
 }
 
+// Comparaison tolérante des réponses : insensible aux majuscules, accents, tirets,
+// articles (le, la, l', un...) et aux petites fautes de frappe.
+const MOTS_VIDES_REPONSE = ["le", "la", "les", "l", "un", "une", "des", "du", "de", "d", "au", "aux", "en", "et", "a"];
+
+function nettoyerReponse(texte) {
+  return String(texte || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/œ/g, "oe").replace(/æ/g, "ae")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function distanceEdition(a, b) {
+  if (a === b) return 0;
+  const lignePrec = [];
+  for (let j = 0; j <= b.length; j++) lignePrec[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    let diag = lignePrec[0];
+    lignePrec[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const memo = lignePrec[j];
+      lignePrec[j] = Math.min(
+        lignePrec[j] + 1,
+        lignePrec[j - 1] + 1,
+        diag + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+      diag = memo;
+    }
+  }
+  return lignePrec[b.length];
+}
+
+// Nombre de fautes tolérées selon la longueur (aucune pour les chiffres ou les mots de 4 lettres ou moins)
+function tolerance(mot) {
+  if (/[0-9]/.test(mot) || mot.length <= 4) return 0;
+  if (mot.length <= 7) return 1;
+  if (mot.length <= 12) return 2;
+  return 3;
+}
+
+// Numéros : « 12 », « 12e », « 12ème », « 12e arrondissement », « paris 12 », « douze » sont équivalents
+const NOMBRES_EN_LETTRES = {
+  un: "1", une: "1", premier: "1", premiere: "1", deux: "2", deuxieme: "2", second: "2", seconde: "2",
+  trois: "3", troisieme: "3", quatre: "4", quatrieme: "4", cinq: "5", cinquieme: "5", six: "6", sixieme: "6",
+  sept: "7", septieme: "7", huit: "8", huitieme: "8", neuf: "9", neuvieme: "9", dix: "10", dixieme: "10",
+  onze: "11", onzieme: "11", douze: "12", douzieme: "12", treize: "13", treizieme: "13",
+  quatorze: "14", quatorzieme: "14", quinze: "15", quinzieme: "15", seize: "16", seizieme: "16",
+  vingt: "20", vingtieme: "20"
+};
+const MOTS_BRUIT_NUMERO = ["arrondissement", "arrondissements", "arr", "arrt", "paris", "e", "eme", "er", "ere", "ieme", "numero", "n", "no"];
+
+function jetonsNumeriques(texte) {
+  // Retourne la liste de nombres si le texte ne contient que des numéros (+ mots de bruit), sinon null
+  const mots = nettoyerReponse(texte).replace(/([0-9])([a-z])/g, "$1 $2").split(" ").filter(Boolean);
+  const nombres = [];
+  for (let i = 0; i < mots.length; i++) {
+    const m = mots[i];
+    if (/^[0-9]+$/.test(m)) nombres.push(String(parseInt(m, 10)));
+    else if (NOMBRES_EN_LETTRES[m] && !(m === "un" || m === "une") ) nombres.push(NOMBRES_EN_LETTRES[m]);
+    else if (MOTS_BRUIT_NUMERO.indexOf(m) !== -1) continue;
+    else return null;
+  }
+  return nombres.length ? nombres : null;
+}
+
+function reponseAcceptable(donnee, attendue) {
+  const d = nettoyerReponse(donnee);
+  const a = nettoyerReponse(attendue);
+  if (!d || !a) return false;
+  if (d === a) return true;
+
+  // Réponses numériques (ex. arrondissement) : on compare les numéros, pas les mots autour
+  const nombresAttendus = jetonsNumeriques(attendue);
+  if (nombresAttendus && /[0-9]|[a-z]/.test(a)) {
+    const nombresDonnes = jetonsNumeriques(donnee);
+    return !!nombresDonnes && nombresDonnes.join(" ") === nombresAttendus.join(" ");
+  }
+
+  // Sans espaces : « saint-malo » = « saint malo » = « saintmalo »
+  const dSerre = d.replace(/ /g, "");
+  const aSerre = a.replace(/ /g, "");
+  if (dSerre === aSerre) return true;
+  if (distanceEdition(dSerre, aSerre) <= tolerance(aSerre) && aSerre.length >= 4) return true;
+
+  // Mot par mot : on ignore les articles ; chaque mot attendu doit se retrouver (à une faute près)
+  const motsAttendus = a.split(" ").filter(function(m) { return MOTS_VIDES_REPONSE.indexOf(m) === -1; });
+  const motsDonnes = d.split(" ").filter(function(m) { return MOTS_VIDES_REPONSE.indexOf(m) === -1; });
+  if (motsAttendus.length === 0 || motsDonnes.length === 0) return false;
+
+  let trouves = 0;
+  motsAttendus.forEach(function(m) {
+    if (motsDonnes.some(function(g) { return distanceEdition(g, m) <= tolerance(m); })) trouves++;
+  });
+  // Tous les mots attendus ; pour les réponses de 3 mots ou plus, un seul mot manquant est toléré
+  const manquantsTolerables = motsAttendus.length >= 3 ? 1 : 0;
+  return trouves >= motsAttendus.length - manquantsTolerables && trouves > 0;
+}
+
 // Vérifie la réponse saisie
 document.getElementById("bouton-valider-reponse").addEventListener("click", function() {
   const reponseDonnee = document.getElementById("reponse-utilisateur").value.trim().toLowerCase();
   const bonneReponse = indicesEnCours[indiceActuelIndex].reponse;
 
-  if (reponseDonnee === bonneReponse) {
+  if (reponseAcceptable(reponseDonnee, bonneReponse)) {
 
     indiceActuelIndex++;
 
