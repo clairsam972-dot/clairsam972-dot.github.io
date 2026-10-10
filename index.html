@@ -161,7 +161,8 @@
     #question-source .plus-tard { margin-top: 8px; background: none; border: none; color: #cdbfd6; text-decoration: underline; cursor: pointer; font-size: .9em; }
     .date-aventure { margin: 0 0 6px; font-size: .9em; opacity: .85; }
     .message-finie { display: inline-block; margin: 0 0 8px; padding: 4px 12px; border-radius: 8px; background: #3d2448; font-weight: bold; }
-    .aventure-finie { opacity: .85; }
+    .aventure-finie { opacity: .5; filter: grayscale(1); }
+    .aventure-finie:hover { opacity: .75; }
     .badge-categorie { display: inline-block; font-size: .8em; padding: 2px 10px; border-radius: 999px; border: 1px solid #3d2448; margin-bottom: 6px; }
     /* Fenêtre de discussion aux couleurs du site (texte lisible) */
     .modale-overlay { z-index: 9990; }
@@ -3296,6 +3297,9 @@ async function chargerListeAventures() {
 
     conteneur.innerHTML = "";
 
+    // Aventures en cours d'abord, aventures terminées (grisées) en bas de liste
+    aventures.sort(function(x, y) { return (aventureFinie(x) ? 1 : 0) - (aventureFinie(y) ? 1 : 0); });
+
     aventures.forEach(function(aventure) {
       const carte = document.createElement("article");
       carte.className = "carte-chasse";
@@ -3312,6 +3316,40 @@ async function chargerListeAventures() {
         ('<button type="button" class="primaire bouton-jouer" data-id="' + aventure.id + '">' + (finie ? "Consulter l'aventure (aperçu)" : "Commencer l'aventure") + "</button>");
 
       conteneur.appendChild(carte);
+
+      // Annuler / rétablir : réservé au créateur de l'aventure et à l'administratrice
+      if (aventure.user_id === idUtilisateurCourant || idUtilisateurCourant === ADMIN_USER_ID) {
+        if (aventure.annulee) {
+          carte.classList.add("aventure-finie");
+          carte.insertAdjacentHTML("afterbegin", '<p class="message-finie">🚫 Aventure annulée (invisible pour les membres)</p>');
+        }
+        const boutonAnnuler = document.createElement("button");
+        boutonAnnuler.type = "button";
+        boutonAnnuler.className = "contour";
+        boutonAnnuler.textContent = aventure.annulee ? "↩️ Rétablir cette aventure" : "🚫 Annuler cette aventure";
+        boutonAnnuler.addEventListener("click", async function() {
+          const annuler = !aventure.annulee;
+          const question = annuler
+            ? "Annuler « " + (aventure.titre || "cette aventure") + " » ? Elle disparaîtra pour tous les membres. Les jokers déjà payés ne sont pas remboursés automatiquement (remboursement possible depuis Stripe)."
+            : "Rétablir cette aventure ? Elle redeviendra visible pour tous les membres.";
+          if (!window.confirm(question)) return;
+          boutonAnnuler.disabled = true;
+          try {
+            const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/annuler_aventure", {
+              method: "POST",
+              headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+              body: JSON.stringify({ p_id: aventure.id, p_annuler: annuler })
+            });
+            if (!r.ok) throw new Error(await r.text());
+            chargerListeAventures();
+          } catch (e) {
+            console.error(e);
+            alert("Impossible de modifier cette aventure. Réessayez.");
+            boutonAnnuler.disabled = false;
+          }
+        });
+        carte.appendChild(boutonAnnuler);
+      }
 
       const boutonJouer = carte.querySelector(".bouton-jouer");
       if (boutonJouer) boutonJouer.addEventListener("click", function() {
@@ -4444,7 +4482,7 @@ async function annoncerNouvelleAventure(userId) {
     let derniereVue = 0;
     try { derniereVue = parseInt(localStorage.getItem(cle) || "0", 10) || 0; } catch (e) {}
     const reponse = await fetch(
-      SUPABASE_URL + "/rest/v1/Aventures?select=id,titre,created_at&user_id=neq." + userId + "&order=id.desc&limit=1",
+      SUPABASE_URL + "/rest/v1/Aventures?select=id,titre,created_at&annulee=eq.false&user_id=neq." + userId + "&order=id.desc&limit=1",
       { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token } }
     );
     if (!reponse.ok) return;
