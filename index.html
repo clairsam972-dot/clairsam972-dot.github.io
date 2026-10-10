@@ -32,6 +32,11 @@
     .appel-membres li { margin-bottom: 4px; }
     .appel-membres .appel-signature { opacity: .85; }
     .appel-membres a.primaire { display: inline-block; text-decoration: none; }
+    .flash-aventure { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 9999; width: min(92vw, 460px); display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid #ff4fd8; background: #1b1030; color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+    .flash-aventure[hidden] { display: none; }
+    .flash-aventure .flash-texte { flex: 1; font-size: .95em; line-height: 1.35; }
+    .flash-aventure a { color: #fff; background: #c2185b; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: bold; white-space: nowrap; }
+    .flash-aventure button { background: none; border: 0; color: #fff; font-size: 1.4em; cursor: pointer; padding: 0 4px; }
     .bandeau-offre { display: inline-block; margin: 0 0 18px; padding: 8px 16px; border-radius: 22px; border: 1px solid #ff4fd8; background: rgba(255,79,216,.12); font-weight: bold; font-size: .95em; }
     #ecran-chargement {
       position: fixed; inset: 0; z-index: 9999;
@@ -424,6 +429,11 @@
       <span>📧 Me prévenir par email quand je reçois un message</span>
     </label>
     <p id="message-notif-email" style="font-size:.9em;opacity:.8;margin:6px 0 0;"></p>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:12px;">
+      <input type="checkbox" id="case-notif-aventure" style="width:auto;">
+      <span>🧭 Me prévenir par email quand une aventure est publiée</span>
+    </label>
+    <p id="message-notif-aventure" style="font-size:.9em;opacity:.8;margin:6px 0 0;"></p>
   </div>
 
   <div class="carte" id="carte-blocages">
@@ -2090,6 +2100,9 @@ async function afficherProfil(accessToken, userEmail, userId) {
   await chargerAlbum(idUtilisateurCourant, "prive", "galerie-medias-prive", true);
   chargerHistoires();
   demarrerPresence();
+  annoncerNouvelleAventure(userId);
+  document.getElementById("case-notif-aventure").checked = profil.notif_aventure !== false;
+  document.getElementById("message-notif-aventure").textContent = "";
   mettreAJourBadgeMessages();
   chargerBlocages();
   chargerDemandesAlbum();
@@ -3041,7 +3054,7 @@ boutonAjouterIndice.addEventListener("click", function() {
     '<input type="text" class="champ-indice" required>' +
     '<label>Réponse à deviner</label>' +
     '<input type="text" class="champ-reponse" required>' +
-    '<p class="aide-champ">Indiquez la réponse la plus simple. Majuscules, accents, petites fautes de frappe et écritures différentes d'un numéro (« 12 », « 12e », « douze ») seront acceptés.</p>' +
+    '<p class="aide-champ">Indiquez la réponse la plus simple. Majuscules, accents, petites fautes de frappe et écritures différentes d\'un numéro (« 12 », « 12e », « douze ») seront acceptés.</p>' +
     '<button type="button" class="contour bouton-supprimer-indice">Supprimer cet indice</button>';
 
   listeIndices.appendChild(bloc);
@@ -4370,6 +4383,59 @@ async function chargerMessages() {
     mettreAJourBadgeMessages();
   }
 }
+
+
+// ===== Flash « une aventure est disponible » à la connexion =====
+async function annoncerNouvelleAventure(userId) {
+  try {
+    const token = localStorage.getItem("outdoor_access_token");
+    if (!token) return;
+    const cle = "aventure_vue_" + userId;
+    let derniereVue = 0;
+    try { derniereVue = parseInt(localStorage.getItem(cle) || "0", 10) || 0; } catch (e) {}
+    const reponse = await fetch(
+      SUPABASE_URL + "/rest/v1/Aventures?select=id,titre,created_at&user_id=neq." + userId + "&order=id.desc&limit=1",
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token } }
+    );
+    if (!reponse.ok) return;
+    const liste = await reponse.json();
+    if (!liste.length) return;
+    const a = liste[0];
+    const recente = (Date.now() - new Date(a.created_at).getTime()) < 14 * 86400000;
+    if (a.id <= derniereVue || (!derniereVue && !recente)) return;
+    document.getElementById("flash-aventure-texte").textContent = "🧭 Une aventure est disponible : « " + String(a.titre || "").slice(0, 80) + " »";
+    const flash = document.getElementById("flash-aventure");
+    flash.hidden = false;
+    const fermer = function() {
+      flash.hidden = true;
+      try { localStorage.setItem(cle, String(a.id)); } catch (e) {}
+    };
+    document.getElementById("flash-aventure-fermer").onclick = fermer;
+    document.getElementById("flash-aventure-lien").onclick = fermer;
+  } catch (e) { console.error("[flash aventure]", e); }
+}
+
+document.getElementById("case-notif-aventure").addEventListener("change", async function() {
+  const token = localStorage.getItem("outdoor_access_token");
+  const c = this;
+  const message = document.getElementById("message-notif-aventure");
+  if (!token) return;
+  c.disabled = true;
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/maj_notif_aventure", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ actif: c.checked })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    if (window.monProfilCourant) window.monProfilCourant.notif_aventure = c.checked;
+    message.textContent = c.checked ? "Activé : vous serez prévenu(e) par email des nouvelles aventures." : "Désactivé : plus d'email pour les nouvelles aventures.";
+  } catch (error) {
+    console.error(error);
+    c.checked = !c.checked;
+    message.textContent = "Impossible d'enregistrer ce choix. Réessayez.";
+  } finally { c.disabled = false; }
+});
 
 // ===== Notifications par email (option du profil) =====
 document.getElementById("case-notif-email").addEventListener("change", async function() {
@@ -5899,5 +5965,10 @@ async function chargerVerificationsEnAttente() {
     }).catch(function(){});
 })();
 </script>
+<div id="flash-aventure" class="flash-aventure" role="status" hidden>
+  <span class="flash-texte" id="flash-aventure-texte"></span>
+  <a href="#decouvrir-aventures" id="flash-aventure-lien">Voir</a>
+  <button type="button" id="flash-aventure-fermer" aria-label="Fermer">×</button>
+</div>
 </body>
 </html>
