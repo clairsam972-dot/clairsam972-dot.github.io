@@ -5247,6 +5247,11 @@ async function gererRetourJoker() {
 
     if (aventures.length === 0) return;
 
+    // Le profil se charge en parallèle : on l'attend (sinon « abonnement nécessaire » s'affiche à tort)
+    for (let attente = 0; attente < 40 && !window.monProfilCourant; attente++) {
+      await new Promise(function(resolve) { setTimeout(resolve, 250); });
+    }
+
     await demarrerAventure(aventures[0]);
 
     const index = indicesEnCours.findIndex(function(indice) {
