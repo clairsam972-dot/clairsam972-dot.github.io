@@ -34,6 +34,9 @@
     .appel-membres a.primaire { display: inline-block; text-decoration: none; }
     .flash-aventure { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 9999; width: min(92vw, 460px); display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid #ff4fd8; background: #1b1030; color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
     .flash-aventure[hidden] { display: none; }
+    #flash-modif { top: 84px; }
+    .participation { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+    .participation .nb { opacity: .85; }
     .flash-aventure .flash-texte { flex: 1; font-size: .95em; line-height: 1.35; }
     .flash-aventure a { color: #fff; background: #c2185b; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: bold; white-space: nowrap; }
     .flash-aventure button { background: none; border: 0; color: #fff; font-size: 1.4em; cursor: pointer; padding: 0 4px; }
@@ -1181,6 +1184,11 @@
   <h2>Créer une aventure</h2>
 
   <form id="formulaire-aventure">
+    <div id="bandeau-edition" class="carte" hidden>
+      <p><strong>✏️ Modification de l'aventure « <span id="titre-edition"></span> »</strong></p>
+      <p class="aide-champ">Modifiable jusqu'à 1 heure avant le début. Les indices déjà publiés peuvent être corrigés mais pas supprimés.</p>
+      <button type="button" class="contour" id="annuler-edition">Annuler la modification</button>
+    </div>
     <label for="categorie-aventure">Type d'aventure</label>
     <select id="categorie-aventure" required>
       <option value="">-- Choisissez --</option>
@@ -1201,6 +1209,10 @@
     <label for="date-aventure">Date et heure de l'aventure</label>
     <input type="datetime-local" id="date-aventure" required>
     <p class="aide-champ">Une fois cette date passée, l'aventure s'affichera comme « finie ».</p>
+
+    <label for="max-participants-aventure">Nombre maximum de participants (facultatif)</label>
+    <input type="number" id="max-participants-aventure" min="1" max="500" step="1" inputmode="numeric" placeholder="Illimité">
+    <p class="aide-champ">Laissez vide pour ne pas limiter. Quand la limite est atteinte, le bouton « Je participe » affiche « Complet ».</p>
 
     <label for="titre-aventure">Titre de l'aventure</label>
     <input type="text" id="titre-aventure" required>
@@ -2102,6 +2114,7 @@ async function afficherProfil(accessToken, userEmail, userId) {
   chargerHistoires();
   demarrerPresence();
   annoncerNouvelleAventure(userId);
+  annoncerAventuresModifiees(userId);
   document.getElementById("case-notif-aventure").checked = profil.notif_aventure !== false;
   document.getElementById("message-notif-aventure").textContent = "";
   mettreAJourBadgeMessages();
@@ -3047,28 +3060,97 @@ window.addEventListener("DOMContentLoaded", async function() {
 const listeIndices = document.getElementById("liste-indices");
 const boutonAjouterIndice = document.getElementById("ajouter-indice");
 
-boutonAjouterIndice.addEventListener("click", function() {
+function ajouterBlocIndice(donnees) {
   const bloc = document.createElement("div");
   bloc.className = "bloc-indice";
+  if (donnees && donnees.id) bloc.dataset.indiceId = donnees.id;
   bloc.innerHTML =
     '<label>Indice</label>' +
     '<input type="text" class="champ-indice" required>' +
     '<label>Réponse à deviner</label>' +
     '<input type="text" class="champ-reponse" required>' +
     '<p class="aide-champ">Indiquez la réponse la plus simple. Majuscules, accents, petites fautes de frappe et écritures différentes d\'un numéro (« 12 », « 12e », « douze ») seront acceptés.</p>' +
-    '<button type="button" class="contour bouton-supprimer-indice">Supprimer cet indice</button>';
+    (donnees && donnees.id ? "" : '<button type="button" class="contour bouton-supprimer-indice">Supprimer cet indice</button>');
 
+  if (donnees) {
+    bloc.querySelector(".champ-indice").value = donnees.indice || "";
+    bloc.querySelector(".champ-reponse").value = donnees.reponse || "";
+  }
   listeIndices.appendChild(bloc);
 
-  bloc.querySelector(".bouton-supprimer-indice").addEventListener("click", function() {
+  const boutonSupprimer = bloc.querySelector(".bouton-supprimer-indice");
+  if (boutonSupprimer) boutonSupprimer.addEventListener("click", function() {
     bloc.remove();
   });
-});
+}
+
+boutonAjouterIndice.addEventListener("click", function() { ajouterBlocIndice(); });
 
 boutonAjouterIndice.click();
 
-// Création d'une aventure
+// Création d'une aventure (et modification par son créateur)
 const formulaireAventure = document.getElementById("formulaire-aventure");
+let aventureEnEdition = null;
+
+// Limite de participants saisie (null = illimité) ; nombre entier de 1 à 500
+function lireMaxParticipants() {
+  const v = parseInt(document.getElementById("max-participants-aventure").value, 10);
+  return Number.isFinite(v) && v >= 1 ? Math.min(v, 500) : null;
+}
+
+function quitterModeEdition() {
+  aventureEnEdition = null;
+  document.getElementById("bandeau-edition").hidden = true;
+  formulaireAventure.reset();
+  listeIndices.innerHTML = "";
+  ajouterBlocIndice();
+  boutonAjouterIndice.hidden = false;
+  formulaireAventure.querySelector('button[type="submit"]').textContent = "Publier l'aventure";
+  document.querySelector("#creer-aventure h2").textContent = "Créer une aventure";
+}
+document.getElementById("annuler-edition").addEventListener("click", function() {
+  quitterModeEdition();
+  window.location.hash = "decouvrir-aventures";
+});
+
+// Une aventure est modifiable par son créateur jusqu'à 1 h avant son début
+function aventureModifiable(aventure) {
+  return !!aventure && !!aventure.date_aventure && !aventure.annulee &&
+    new Date(aventure.date_aventure).getTime() - 3600000 > Date.now();
+}
+
+async function commencerModification(aventure) {
+  const token = localStorage.getItem("outdoor_access_token");
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/lire_indices_createur", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_aventure_id: aventure.id })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const indices = await r.json();
+
+    quitterModeEdition();
+    aventureEnEdition = aventure;
+    document.getElementById("titre-edition").textContent = aventure.titre || "";
+    document.getElementById("bandeau-edition").hidden = false;
+    document.querySelector("#creer-aventure h2").textContent = "Modifier l'aventure";
+    formulaireAventure.querySelector('button[type="submit"]').textContent = "Enregistrer les modifications";
+    document.getElementById("categorie-aventure").value = aventure.categorie || "";
+    document.getElementById("lieu-aventure").value = aventure.lieu || "";
+    document.getElementById("titre-aventure").value = aventure.titre || "";
+    document.getElementById("description-aventure").value = aventure.description || "";
+    document.getElementById("max-participants-aventure").value = aventure.max_participants || "";
+    const d = new Date(aventure.date_aventure);
+    document.getElementById("date-aventure").value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    listeIndices.innerHTML = "";
+    indices.forEach(function(i) { ajouterBlocIndice(i); });
+    window.location.hash = "creer-aventure";
+  } catch (e) {
+    console.error(e);
+    alert("Impossible de charger l'aventure pour la modifier. Réessayez.");
+  }
+}
 
 formulaireAventure.addEventListener("submit", async function(e) {
   e.preventDefault();
@@ -3090,6 +3172,61 @@ formulaireAventure.addEventListener("submit", async function(e) {
   }
 
   const bouton = formulaireAventure.querySelector('button[type="submit"]');
+
+  if (aventureEnEdition) {
+    await avecChargement(bouton, "Enregistrement...", async function() {
+      try {
+        const dateObj = new Date(document.getElementById("date-aventure").value);
+        if (isNaN(dateObj.getTime())) throw new Error("Indiquez la date et l'heure de l'aventure.");
+        const indices = [];
+        blocsIndices.forEach(function(bloc) {
+          const element = {
+            indice: bloc.querySelector(".champ-indice").value,
+            reponse: bloc.querySelector(".champ-reponse").value.trim().toLowerCase()
+          };
+          if (bloc.dataset.indiceId) element.id = Number(bloc.dataset.indiceId);
+          indices.push(element);
+        });
+        const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/modifier_aventure", {
+          method: "POST",
+          headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            p_id: aventureEnEdition.id,
+            p_titre: titre,
+            p_description: description,
+            p_categorie: document.getElementById("categorie-aventure").value || null,
+            p_lieu: document.getElementById("lieu-aventure").value || null,
+            p_date: dateObj.toISOString(),
+            p_indices: indices
+          })
+        });
+        if (!r.ok) {
+          let msg = await r.text();
+          try { msg = JSON.parse(msg).message || msg; } catch (e) {}
+          throw new Error(msg);
+        }
+        // Limite de participants (réglage à part, refusée si elle est plus basse que le nombre d'inscrits)
+        const rm = await fetch(SUPABASE_URL + "/rest/v1/rpc/fixer_max_participants", {
+          method: "POST",
+          headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_id: aventureEnEdition.id, p_max: lireMaxParticipants() })
+        });
+        if (!rm.ok) {
+          let msg = await rm.text();
+          try { msg = JSON.parse(msg).message || msg; } catch (e) {}
+          alert("Aventure modifiée, mais la limite de participants n'a pas été enregistrée : " + msg);
+        } else {
+          alert("Votre aventure a été modifiée.");
+        }
+        quitterModeEdition();
+        window.location.hash = "decouvrir-aventures";
+      } catch (error) {
+        console.error(error);
+        alert("Modification impossible : " + error.message);
+      }
+    });
+    return;
+  }
 
   await avecChargement(bouton, "Publication en cours...", async function() {
     try {
@@ -3147,7 +3284,8 @@ formulaireAventure.addEventListener("submit", async function(e) {
             description: description,
             categorie: document.getElementById("categorie-aventure").value || null,
             lieu: document.getElementById("lieu-aventure").value || null,
-            date_aventure: dateAventureValeur
+            date_aventure: dateAventureValeur,
+            max_participants: lireMaxParticipants()
           })
         }
       );
@@ -3300,6 +3438,17 @@ async function chargerListeAventures() {
     // Aventures en cours d'abord, aventures terminées (grisées) en bas de liste
     aventures.sort(function(x, y) { return (aventureFinie(x) ? 1 : 0) - (aventureFinie(y) ? 1 : 0); });
 
+    // Nombre de participants ("Je participe") par aventure
+    const participations = {};
+    try {
+      const rp = await fetch(SUPABASE_URL + "/rest/v1/rpc/participations_resume", {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_ids: aventures.map(function(a) { return a.id; }) })
+      });
+      if (rp.ok) (await rp.json()).forEach(function(l) { participations[l.aventure_id] = { nb: Number(l.nb), moi: !!l.moi }; });
+    } catch (e) { console.error(e); }
+
     aventures.forEach(function(aventure) {
       const carte = document.createElement("article");
       carte.className = "carte-chasse";
@@ -3316,6 +3465,79 @@ async function chargerListeAventures() {
         ('<button type="button" class="primaire bouton-jouer" data-id="' + aventure.id + '">' + (finie ? "Consulter l'aventure (aperçu)" : "Commencer l'aventure") + "</button>");
 
       conteneur.appendChild(carte);
+
+      // Participation : « Je participe » pour les membres, nombre de participants pour tous
+      if (!aventure.annulee) {
+        const part = participations[aventure.id] || { nb: 0, moi: false };
+        const ligne = document.createElement("div");
+        ligne.className = "participation";
+        const compteur = document.createElement("span");
+        compteur.className = "nb";
+        const limite = aventure.max_participants || null;
+        const complet = !!limite && part.nb >= limite;
+        compteur.textContent = "👥 " + part.nb + (limite ? " / " + limite : "") + " participant" + (part.nb > 1 ? "s" : "") + (complet ? " — complet" : "");
+        ligne.appendChild(compteur);
+        const estCreateur = aventure.user_id === idUtilisateurCourant;
+        if (!estCreateur && !finie) {
+          const boutonParticipe = document.createElement("button");
+          boutonParticipe.type = "button";
+          boutonParticipe.className = part.moi ? "contour" : "primaire";
+          boutonParticipe.textContent = part.moi ? "✅ Je participe (retirer)" : (complet ? "Complet" : "🙋 Je participe");
+          if (complet && !part.moi) { boutonParticipe.disabled = true; boutonParticipe.className = "contour"; }
+          boutonParticipe.addEventListener("click", async function() {
+            boutonParticipe.disabled = true;
+            try {
+              const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/participer_aventure", {
+                method: "POST",
+                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ p_id: aventure.id, p_participe: !part.moi })
+              });
+              if (!r.ok) throw new Error(await r.text());
+              chargerListeAventures();
+            } catch (e) {
+              console.error(e);
+              alert("Impossible d'enregistrer votre participation. Réessayez.");
+              boutonParticipe.disabled = false;
+            }
+          });
+          ligne.appendChild(boutonParticipe);
+          if (part.moi) {
+            const info = document.createElement("small");
+            info.textContent = "Vous serez prévenu(e) par e-mail si l'aventure est modifiée ou annulée.";
+            ligne.appendChild(info);
+          }
+        } else if (estCreateur && part.nb > 0) {
+          const boutonQui = document.createElement("button");
+          boutonQui.type = "button";
+          boutonQui.className = "contour";
+          boutonQui.textContent = "Voir qui participe";
+          boutonQui.addEventListener("click", async function() {
+            try {
+              const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/participants_de_mon_aventure", {
+                method: "POST",
+                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ p_id: aventure.id })
+              });
+              if (!r.ok) throw new Error(await r.text());
+              const noms = (await r.json()).map(function(l) { return l.pseudo; });
+              boutonQui.textContent = "Participants : " + noms.join(", ");
+              boutonQui.disabled = true;
+            } catch (e) { console.error(e); }
+          });
+          ligne.appendChild(boutonQui);
+        }
+        carte.appendChild(ligne);
+      }
+
+      // Modifier : réservé au créateur, jusqu'à 1 h avant le début
+      if (aventure.user_id === idUtilisateurCourant && aventureModifiable(aventure)) {
+        const boutonModifier = document.createElement("button");
+        boutonModifier.type = "button";
+        boutonModifier.className = "contour";
+        boutonModifier.textContent = "✏️ Modifier mon aventure";
+        boutonModifier.addEventListener("click", function() { commencerModification(aventure); });
+        carte.appendChild(boutonModifier);
+      }
 
       // Annuler / rétablir : réservé au créateur de l'aventure et à l'administratrice
       if (aventure.user_id === idUtilisateurCourant || idUtilisateurCourant === ADMIN_USER_ID) {
@@ -4501,6 +4723,39 @@ async function annoncerNouvelleAventure(userId) {
     document.getElementById("flash-aventure-fermer").onclick = fermer;
     document.getElementById("flash-aventure-lien").onclick = fermer;
   } catch (e) { console.error("[flash aventure]", e); }
+}
+
+// Flash : une aventure à laquelle je participe a été modifiée ou annulée depuis ma dernière visite
+async function annoncerAventuresModifiees(userId) {
+  try {
+    const token = localStorage.getItem("outdoor_access_token");
+    if (!token) return;
+    const cle = "modif_vue_" + userId;
+    let depuis = "";
+    try { depuis = localStorage.getItem(cle) || ""; } catch (e) {}
+    if (!depuis) depuis = new Date(Date.now() - 7 * 86400000).toISOString();
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/mes_aventures_modifiees", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_depuis: depuis })
+    });
+    if (!r.ok) return;
+    const liste = await r.json();
+    if (!liste.length) return;
+    const a = liste[0];
+    const titre = String(a.titre || "").slice(0, 80);
+    document.getElementById("flash-modif-texte").textContent = a.annulee
+      ? "🚫 L'aventure « " + titre + " » a été annulée"
+      : "✏️ L'aventure « " + titre + " » a été modifiée" + (liste.length > 1 ? " (+" + (liste.length - 1) + " autre" + (liste.length > 2 ? "s" : "") + ")" : "");
+    const flash = document.getElementById("flash-modif");
+    flash.hidden = false;
+    const fermer = function() {
+      flash.hidden = true;
+      try { localStorage.setItem(cle, a.modifiee_le); } catch (e) {}
+    };
+    document.getElementById("flash-modif-fermer").onclick = fermer;
+    document.getElementById("flash-modif-lien").onclick = fermer;
+  } catch (e) { console.error("[flash modif]", e); }
 }
 
 document.getElementById("case-notif-aventure").addEventListener("change", async function() {
@@ -6058,6 +6313,11 @@ async function chargerVerificationsEnAttente() {
     }).catch(function(){});
 })();
 </script>
+<div id="flash-modif" class="flash-aventure" role="status" hidden>
+  <span class="flash-texte" id="flash-modif-texte"></span>
+  <a href="#decouvrir-aventures" id="flash-modif-lien">Voir</a>
+  <button type="button" id="flash-modif-fermer" aria-label="Fermer">×</button>
+</div>
 <div id="flash-aventure" class="flash-aventure" role="status" hidden>
   <span class="flash-texte" id="flash-aventure-texte"></span>
   <a href="#decouvrir-aventures" id="flash-aventure-lien">Voir</a>
