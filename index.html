@@ -1173,6 +1173,7 @@
 
   <div id="zone-victoire" style="display:none;">
     <p>🎉 Bravo, vous avez trouvé l'aventure !</p>
+    <div id="recap-victoire"></div>
     <button type="button" class="primaire" id="bouton-prevenir-createur">Prévenir le créateur</button>
   </div>
 
@@ -3351,6 +3352,36 @@ let indiceActuelIndex = 0;
 
 const NOMS_CATEGORIES = { nature: "🌲 Évasion nature", nuit: "🌙 Nuit sauvage", defi: "🧩 Défi mystère" };
 const NOMS_LIEUX = { paris_idf: "🗼 Paris & Île-de-France", aire_autoroute: "🛣️ Aire d'autoroute", autres: "🗺️ Autres" };
+function afficherRecapVictoire(r, termine) {
+  const zone = document.getElementById("recap-victoire");
+  if (!zone) return;
+  if (!r) { zone.innerHTML = ""; return; }
+  let quand = "à préciser avec le créateur";
+  if (r.date_aventure) {
+    try { quand = new Date(r.date_aventure).toLocaleString("fr-FR", { timeZone: "Europe/Paris", dateStyle: "full", timeStyle: "short" }); } catch (e) {}
+  }
+  let h = "<h3>Félicitations ! 🎉</h3>";
+  if (r.finie) {
+    h += "<p>Cette aventure a déjà eu lieu : <strong>" + echapperTexte(quand) + "</strong>.</p>";
+  } else {
+    h += "<p>📅 Votre rendez-vous : <strong>" + echapperTexte(quand) + "</strong></p>";
+    h += "<p>Un e-mail de confirmation vient de vous être envoyé.</p>";
+  }
+  if (r.indices && r.indices.length) {
+    h += "<p><strong>🧭 Les indications que vous avez trouvées :</strong></p><ol>";
+    r.indices.forEach(function(i) {
+      h += "<li>" + echapperTexte(i.indice) + " → <strong>" + echapperTexte(i.reponse) + "</strong></li>";
+    });
+    h += "</ol>";
+  }
+  h += "<p><strong>📝 Résumé de l'aventure</strong></p>";
+  h += "<p><strong>" + echapperTexte(r.titre || "") + "</strong><br>";
+  h += echapperTexte((NOMS_CATEGORIES[r.categorie] || r.categorie || "") + " · " + (NOMS_LIEUX[r.lieu] || r.lieu || "")) + "<br>";
+  if (r.createur) h += "Créée par " + echapperTexte(r.createur) + "<br>";
+  h += "</p>";
+  if (r.description) h += '<p style="white-space:pre-wrap;">' + echapperTexte(r.description) + "</p>";
+  zone.innerHTML = h;
+}
 function echapperTexte(t) {
   return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -3629,6 +3660,7 @@ async function demarrerAventure(aventure) {
 
     document.getElementById("zone-indice").style.display = "block";
     document.getElementById("zone-victoire").style.display = "none";
+    { const rv = document.getElementById("recap-victoire"); if (rv) rv.innerHTML = ""; }
     document.getElementById("message-jeu").textContent = "";
     document.getElementById("reponse-utilisateur").value = "";
 
@@ -3808,6 +3840,7 @@ document.getElementById("bouton-valider-reponse").addEventListener("click", asyn
     } else {
       document.getElementById("zone-indice").style.display = "none";
       document.getElementById("zone-victoire").style.display = "block";
+      afficherRecapVictoire(d.recap, d.termine);
     }
   } else if (d.bloque) {
     message.textContent = MESSAGE_PLUS_ESSAIS;
