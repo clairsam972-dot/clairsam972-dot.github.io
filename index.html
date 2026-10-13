@@ -35,6 +35,11 @@
     .flash-aventure { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 9999; width: min(92vw, 460px); display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid #ff4fd8; background: #1b1030; color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
     .flash-aventure[hidden] { display: none; }
     #flash-modif { top: 84px; }
+    #bandeau-en-cours { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 9998; width: min(94vw, 520px); display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid #ff4fd8; background: #1b1030; color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+    #bandeau-en-cours[hidden] { display: none; }
+    #bandeau-en-cours .flash-texte { flex: 1; font-size: .95em; line-height: 1.35; }
+    #bandeau-en-cours a { color: #fff; background: #c2185b; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: bold; white-space: nowrap; }
+    #bandeau-en-cours button { background: none; border: 0; color: #fff; font-size: 1.4em; cursor: pointer; padding: 0 4px; }
     .participation { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
     .participation .nb { opacity: .85; }
     .flash-aventure .flash-texte { flex: 1; font-size: .95em; line-height: 1.35; }
@@ -439,6 +444,13 @@
     </label>
     <p id="message-notif-aventure" style="font-size:.9em;opacity:.8;margin:6px 0 0;"></p>
   </div>
+  <div id="bloc-parrainage" style="display:none;margin-top:16px;padding:14px;border:1px solid #ff4fd8;border-radius:12px;">
+    <h3 style="margin-top:0;">💌 Invitez une amie ou un couple</h3>
+    <p style="font-size:.95em;">Partagez votre lien personnel : chaque inscription validée grâce à vous est suivie ici.</p>
+    <input type="text" id="lien-parrainage" readonly style="width:100%;">
+    <button type="button" class="contour" id="bouton-copier-parrainage" style="margin-top:8px;">Copier mon lien</button>
+    <p id="stats-parrainage" style="font-size:.9em;opacity:.85;margin:8px 0 0;"></p>
+  </div>
 
   <div class="carte" id="carte-blocages">
     <p><strong>Membres bloqués</strong></p>
@@ -794,19 +806,6 @@
   <p id="info-inscriptions-fermees" class="bandeau-offre" hidden>
     🌿 Actuellement, l'inscription est ouverte aux femmes, aux couples et aux personnes trans. L'inscription des hommes seuls est momentanément fermée, afin de préserver un équilibre raisonnable entre les membres. Elle rouvrira dès que l'équilibre le permettra.
   </p>
-
-  <div id="liste-attente-bloc" class="formulaire-inscription" hidden>
-    <h3>👨 Hommes : rejoignez la liste d'attente</h3>
-    <p>Les places sont limitées pour garder un bon équilibre. Inscrivez-vous : vous serez prévenu par e-mail, dans l'ordre d'arrivée, dès qu'une place s'ouvre.</p>
-    <p id="liste-attente-nombre" class="aide-champ" hidden></p>
-    <form id="form-liste-attente">
-      <input type="text" id="la-pseudo" placeholder="Pseudo" required minlength="2" maxlength="40" aria-label="Pseudo">
-      <input type="email" id="la-email" placeholder="Adresse e-mail" required maxlength="200" aria-label="Adresse e-mail">
-      <input type="text" id="la-ville" placeholder="Ville (facultatif)" maxlength="80" aria-label="Ville">
-      <button type="submit" class="primaire" id="bouton-liste-attente">Rejoindre la liste d'attente</button>
-    </form>
-    <p id="liste-attente-message" role="status"></p>
-  </div>
 
   <div class="cartes-inscription">
 
@@ -1339,9 +1338,8 @@
       <div id="liste-verifications"><p>Chargement...</p></div>
     </div>
     <div class="moderation-verif">
-      <h3>Liste d'attente (hommes)</h3>
-      <p class="aide-champ">Quand une place s'ouvre, écrivez au premier de la liste depuis contact@enpleinairs.fr, puis cliquez « Marquer comme invité ».</p>
-      <div id="liste-attente-admin"><p>Chargement...</p></div>
+      <h3>Parrainages</h3>
+      <div id="liste-parrainages"><p>Chargement...</p></div>
     </div>
     <h3>Albums des membres</h3>
     <div id="moderation-liste-membres"><p>Chargement des membres...</p></div>
@@ -2029,6 +2027,18 @@ formulaires.forEach(function(config) {
           throw new Error(erreur);
         }
 
+        try {
+          const codeRef = localStorage.getItem("code_parrainage_recu");
+          if (codeRef && authData.access_token) {
+            await fetch(SUPABASE_URL + "/rest/v1/rpc/enregistrer_parrain", {
+              method: "POST",
+              headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + authData.access_token, "Content-Type": "application/json" },
+              body: JSON.stringify({ p_code: codeRef })
+            });
+            localStorage.removeItem("code_parrainage_recu");
+          }
+        } catch (e) { console.error("[parrainage]", e); }
+
         const envoiOk = await envoyerDocumentsVerification(documents.fichiers, userId, authData.access_token);
         alert(envoiOk
           ? "Inscription enregistrée ! 🎉 Votre compte sera activé dès que l'administratrice aura vérifié vos documents. Vous pouvez déjà vous connecter pour compléter votre profil."
@@ -2135,6 +2145,8 @@ async function afficherProfil(accessToken, userEmail, userId) {
   demarrerPresence();
   annoncerNouvelleAventure(userId);
   annoncerAventuresModifiees(userId);
+  demarrerBandeauEnCours();
+  chargerParrainage();
   document.getElementById("case-notif-aventure").checked = profil.notif_aventure !== false;
   document.getElementById("message-notif-aventure").textContent = "";
   mettreAJourBadgeMessages();
@@ -4083,7 +4095,7 @@ async function chargerModerationAlbums() {
   zone.style.display = "";
   liste.innerHTML = "<p>Chargement des membres...</p>";
   chargerVerificationsEnAttente();
-  if (typeof chargerListeAttenteAdmin === "function") chargerListeAttenteAdmin(); else setTimeout(function(){ chargerListeAttenteAdmin(); }, 500);
+  chargerParrainagesAdmin();
 
   const token = localStorage.getItem("outdoor_access_token");
 
@@ -4747,6 +4759,93 @@ async function chargerMessages() {
   }
 }
 
+
+// ===== Parrainage =====
+(function() {
+  try {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) localStorage.setItem("code_parrainage_recu", ref.toUpperCase());
+  } catch (e) {}
+})();
+async function chargerParrainage() {
+  try {
+    const token = localStorage.getItem("outdoor_access_token");
+    if (!token) return;
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/mon_parrainage", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: "{}"
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d || !d.code) return;
+    document.getElementById("lien-parrainage").value = "https://enpleinairs.fr/?ref=" + d.code;
+    document.getElementById("stats-parrainage").textContent =
+      d.inscrits + " inscription" + (d.inscrits > 1 ? "s" : "") + " grâce à vous · " + d.valides + " validée" + (d.valides > 1 ? "s" : "");
+    document.getElementById("bloc-parrainage").style.display = "";
+    document.getElementById("bouton-copier-parrainage").onclick = async function() {
+      const champ = document.getElementById("lien-parrainage");
+      try { await navigator.clipboard.writeText(champ.value); this.textContent = "Lien copié ✔"; }
+      catch (e) { champ.select(); document.execCommand("copy"); this.textContent = "Lien copié ✔"; }
+    };
+  } catch (e) { console.error("[parrainage]", e); }
+}
+async function chargerParrainagesAdmin() {
+  const zone = document.getElementById("liste-parrainages");
+  if (!zone) return;
+  try {
+    const token = localStorage.getItem("outdoor_access_token");
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/parrainages_admin", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: "{}"
+    });
+    if (!r.ok) { zone.innerHTML = "<p>Indisponible.</p>"; return; }
+    const l = await r.json();
+    zone.innerHTML = l.length
+      ? "<ul>" + l.map(function(x) {
+          return "<li><strong>" + echapperTexte(x.parrain) + "</strong> a invité " + echapperTexte(x.filleul) + " (" + echapperTexte(x.profil) + ", " + echapperTexte(x.statut) + ")</li>";
+        }).join("") + "</ul>"
+      : "<p>Aucun parrainage pour le moment.</p>";
+  } catch (e) { zone.innerHTML = "<p>Indisponible.</p>"; }
+}
+
+// ===== Bandeau « aventure en cours / bientôt » visible partout, rafraîchi sans reconnexion =====
+let minuteurBandeauEnCours = null;
+let bandeauFermePour = "";
+async function actualiserBandeauEnCours() {
+  const bandeau = document.getElementById("bandeau-en-cours");
+  if (!bandeau) return;
+  try {
+    const token = localStorage.getItem("outdoor_access_token");
+    if (!token) { bandeau.hidden = true; return; }
+    const debut = new Date(Date.now() - 3 * 3600000).toISOString();
+    const fin = new Date(Date.now() + 24 * 3600000).toISOString();
+    const reponse = await fetch(
+      SUPABASE_URL + "/rest/v1/Aventures?select=id,titre,date_aventure&annulee=eq.false&date_aventure=gte." + encodeURIComponent(debut) + "&date_aventure=lte." + encodeURIComponent(fin) + "&order=date_aventure.asc&limit=1",
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token } }
+    );
+    if (!reponse.ok) return;
+    const liste = await reponse.json();
+    if (!liste.length) { bandeau.hidden = true; return; }
+    const a = liste[0];
+    const cle = String(a.id) + "|" + (new Date(a.date_aventure).getTime() < Date.now() ? "en" : "bientot");
+    if (bandeauFermePour === cle) { bandeau.hidden = true; return; }
+    const d = new Date(a.date_aventure);
+    const heure = d.toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
+    const titre = "« " + String(a.titre || "").slice(0, 70) + " »";
+    document.getElementById("bandeau-en-cours-texte").textContent = d.getTime() < Date.now()
+      ? "🔥 Aventure en cours : " + titre
+      : "⏳ Prochaine aventure à " + heure + " (" + d.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" }) + ") : " + titre;
+    bandeau.hidden = false;
+    document.getElementById("bandeau-en-cours-fermer").onclick = function() { bandeauFermePour = cle; bandeau.hidden = true; };
+  } catch (e) { console.error("[bandeau en cours]", e); }
+}
+function demarrerBandeauEnCours() {
+  actualiserBandeauEnCours();
+  if (minuteurBandeauEnCours) clearInterval(minuteurBandeauEnCours);
+  minuteurBandeauEnCours = setInterval(actualiserBandeauEnCours, 5 * 60000);
+}
 
 // ===== Flash « une aventure est disponible » à la connexion =====
 async function annoncerNouvelleAventure(userId) {
@@ -6352,21 +6451,13 @@ async function chargerVerificationsEnAttente() {
       if (ouverte !== false) return;
       const info = document.getElementById("info-inscriptions-fermees");
       if (info) info.hidden = false;
-      const blocAttente = document.getElementById("liste-attente-bloc");
-      if (blocAttente) blocAttente.hidden = false;
-      fetch(SUPABASE_URL + "/rest/v1/rpc/liste_attente_nombre", { method: "POST", headers: entetes, body: "{}" })
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(n){
-          const el = document.getElementById("liste-attente-nombre");
-          if (el && typeof n === "number" && n >= 3) { el.textContent = "⏳ " + n + " personnes sont déjà sur la liste."; el.hidden = false; }
-        }).catch(function(){});
       ["homme"].forEach(function(profil) {
         const carte = document.querySelector('[data-profil-carte="' + profil + '"]');
         if (carte) {
           const lien = carte.querySelector("a");
           const texte = carte.querySelector("p");
-          if (texte) texte.textContent = "Places limitées pour préserver l'équilibre entre les membres. Rejoignez la liste d'attente.";
-          if (lien) { lien.textContent = "Liste d'attente"; lien.setAttribute("href", "#liste-attente-bloc"); }
+          if (texte) texte.textContent = "Inscription des hommes seuls momentanément fermée, afin de préserver l'équilibre entre les membres.";
+          if (lien) lien.remove();
         }
         const bloc = document.getElementById("formulaire-" + profil);
         if (bloc) bloc.remove();
@@ -6374,71 +6465,15 @@ async function chargerVerificationsEnAttente() {
     }).catch(function(){});
 })();
 </script>
-<script>
-// Liste d'attente (hommes)
-document.getElementById("form-liste-attente").addEventListener("submit", async function(e) {
-  e.preventDefault();
-  const msg = document.getElementById("liste-attente-message");
-  const bouton = document.getElementById("bouton-liste-attente");
-  bouton.disabled = true; msg.textContent = "Envoi...";
-  try {
-    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/rejoindre_liste_attente", {
-      method: "POST",
-      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_pseudo: document.getElementById("la-pseudo").value, p_email: document.getElementById("la-email").value, p_ville: document.getElementById("la-ville").value })
-    });
-    if (!r.ok) throw new Error(await r.text());
-    const rang = await r.json();
-    msg.textContent = "✅ C'est noté ! Vous êtes n°" + rang + " sur la liste. Nous vous écrirons dès qu'une place s'ouvre.";
-    this.reset();
-  } catch (err) {
-    console.error(err);
-    msg.textContent = "Inscription impossible. Vérifiez votre pseudo (2 caractères min.) et votre e-mail, puis réessayez.";
-  }
-  bouton.disabled = false;
-});
-
-// Modération : liste d'attente
-async function chargerListeAttenteAdmin() {
-  const zone = document.getElementById("liste-attente-admin");
-  if (!zone) return;
-  try {
-    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/admin_liste_attente", { method: "POST", headers: enTetesMembre(), body: "{}" });
-    if (!r.ok) throw new Error(await r.text());
-    const lignes = await r.json();
-    zone.innerHTML = "";
-    if (lignes.length === 0) { zone.innerHTML = "<p>Personne sur la liste pour l'instant.</p>"; return; }
-    let rang = 0;
-    lignes.forEach(function(l) {
-      const div = document.createElement("div");
-      div.className = "ligne-verif";
-      const enAttente = l.statut === "en_attente";
-      if (enAttente) rang++;
-      div.innerHTML = "<p><strong>" + (enAttente ? "n°" + rang + " — " : "✉️ Invité — ") + echapperTexte(l.pseudo) + "</strong>" +
-        (l.ville ? " · " + echapperTexte(l.ville) : "") + "</p><p>" + echapperTexte(l.email) +
-        ' <span class="aide-champ">· inscrit le ' + new Date(l.cree_le).toLocaleDateString("fr-FR") + "</span></p>";
-      if (enAttente) {
-        const b = document.createElement("button");
-        b.type = "button"; b.className = "contour"; b.textContent = "Marquer comme invité";
-        b.addEventListener("click", async function() {
-          b.disabled = true;
-          await fetch(SUPABASE_URL + "/rest/v1/rpc/admin_marquer_invite", { method: "POST", headers: enTetesMembre(), body: JSON.stringify({ p_id: l.id }) });
-          chargerListeAttenteAdmin();
-        });
-        div.appendChild(b);
-      }
-      zone.appendChild(div);
-    });
-  } catch (err) {
-    console.error(err);
-    zone.innerHTML = "<p>Impossible de charger la liste d'attente.</p>";
-  }
-}
-</script>
 <div id="flash-modif" class="flash-aventure" role="status" hidden>
   <span class="flash-texte" id="flash-modif-texte"></span>
   <a href="#decouvrir-aventures" id="flash-modif-lien">Voir</a>
   <button type="button" id="flash-modif-fermer" aria-label="Fermer">×</button>
+</div>
+<div id="bandeau-en-cours" role="status" hidden>
+  <span class="flash-texte" id="bandeau-en-cours-texte"></span>
+  <a href="#decouvrir-aventures" id="bandeau-en-cours-lien">Voir</a>
+  <button type="button" id="bandeau-en-cours-fermer" aria-label="Fermer">×</button>
 </div>
 <div id="flash-aventure" class="flash-aventure" role="status" hidden>
   <span class="flash-texte" id="flash-aventure-texte"></span>
