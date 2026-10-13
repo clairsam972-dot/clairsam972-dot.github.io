@@ -1338,6 +1338,10 @@
       <div id="liste-verifications"><p>Chargement...</p></div>
     </div>
     <div class="moderation-verif">
+      <h3>Liste d'attente (hommes)</h3>
+      <div id="liste-attente-admin"><p>Chargement...</p></div>
+    </div>
+    <div class="moderation-verif">
       <h3>Dernières connexions des membres</h3>
       <div id="liste-connexions"><p>Chargement...</p></div>
     </div>
@@ -4101,6 +4105,7 @@ async function chargerModerationAlbums() {
   chargerVerificationsEnAttente();
   chargerParrainagesAdmin();
   chargerConnexionsAdmin();
+  chargerListeAttenteAdmin();
 
   const token = localStorage.getItem("outdoor_access_token");
 
@@ -4764,6 +4769,68 @@ async function chargerMessages() {
   }
 }
 
+
+// ===== Liste d'attente (hommes seuls, inscription fermée) =====
+function ajouterFormulaireListeAttente(carte) {
+  if (document.getElementById("formulaire-attente")) return;
+  const f = document.createElement("form");
+  f.id = "formulaire-attente";
+  f.style.cssText = "margin-top:12px;text-align:left;";
+  f.innerHTML =
+    '<p style="font-size:.95em;margin:0 0 8px;"><strong>📩 Me prévenir à la réouverture</strong></p>' +
+    '<input type="text" id="attente-pseudo" placeholder="Pseudonyme" maxlength="40" required style="width:100%;margin-bottom:6px;">' +
+    '<input type="email" id="attente-email" placeholder="Adresse e-mail" maxlength="120" required style="width:100%;margin-bottom:6px;">' +
+    '<input type="text" id="attente-ville" placeholder="Ville (facultatif)" maxlength="60" style="width:100%;margin-bottom:8px;">' +
+    '<button type="submit" class="primaire" id="attente-bouton">Rejoindre la liste d\'attente</button>' +
+    '<p id="attente-message" style="font-size:.9em;margin:8px 0 0;"></p>';
+  carte.appendChild(f);
+  f.addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const msg = document.getElementById("attente-message");
+    const bouton = document.getElementById("attente-bouton");
+    const pseudo = document.getElementById("attente-pseudo").value.trim();
+    const email = document.getElementById("attente-email").value.trim();
+    const ville = document.getElementById("attente-ville").value.trim();
+    if (!pseudo || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Merci de saisir un pseudonyme et une adresse e-mail valide."; return; }
+    bouton.disabled = true;
+    try {
+      const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/rejoindre_liste_attente", {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_pseudo: pseudo, p_email: email, p_ville: ville || null })
+      });
+      if (!r.ok) throw new Error("http " + r.status);
+      const rang = await r.json();
+      msg.textContent = "✅ C'est noté ! Vous êtes n°" + rang + " sur la liste d'attente. Nous vous écrirons dès la réouverture.";
+      f.querySelectorAll("input").forEach(function(i) { i.disabled = true; });
+    } catch (err) {
+      msg.textContent = "Désolé, l'inscription à la liste a échoué. Réessayez dans un instant.";
+      bouton.disabled = false;
+    }
+  });
+}
+async function chargerListeAttenteAdmin() {
+  const zone = document.getElementById("liste-attente-admin");
+  if (!zone) return;
+  try {
+    const token = localStorage.getItem("outdoor_access_token");
+    const h = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" };
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/admin_liste_attente", { method: "POST", headers: h, body: "{}" });
+    if (!r.ok) { zone.innerHTML = "<p>Indisponible.</p>"; return; }
+    const l = (await r.json()).filter(function(x) { return x.statut === "en_attente"; });
+    if (!l.length) { zone.innerHTML = "<p>Personne en attente pour le moment.</p>"; return; }
+    zone.innerHTML = "<ul>" + l.map(function(x) {
+      return "<li><strong>" + echapperTexte(x.pseudo) + "</strong> — " + echapperTexte(x.email) + (x.ville ? " (" + echapperTexte(x.ville) + ")" : "") +
+        ' <button type="button" class="contour" data-invite="' + x.id + '">Marquer comme invité</button></li>';
+    }).join("") + "</ul>";
+    zone.querySelectorAll("[data-invite]").forEach(function(b) {
+      b.onclick = async function() {
+        await fetch(SUPABASE_URL + "/rest/v1/rpc/admin_marquer_invite", { method: "POST", headers: h, body: JSON.stringify({ p_id: parseInt(b.getAttribute("data-invite"), 10) }) });
+        chargerListeAttenteAdmin();
+      };
+    });
+  } catch (e) { zone.innerHTML = "<p>Indisponible.</p>"; }
+}
 
 // ===== Parrainage =====
 (function() {
@@ -6485,6 +6552,7 @@ async function chargerVerificationsEnAttente() {
           const texte = carte.querySelector("p");
           if (texte) texte.textContent = "Inscription des hommes seuls momentanément fermée, afin de préserver l'équilibre entre les membres.";
           if (lien) lien.remove();
+          ajouterFormulaireListeAttente(carte);
         }
         const bloc = document.getElementById("formulaire-" + profil);
         if (bloc) bloc.remove();
