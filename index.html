@@ -1338,6 +1338,10 @@
       <div id="liste-verifications"><p>Chargement...</p></div>
     </div>
     <div class="moderation-verif">
+      <h3>Dernières connexions des membres</h3>
+      <div id="liste-connexions"><p>Chargement...</p></div>
+    </div>
+    <div class="moderation-verif">
       <h3>Parrainages</h3>
       <div id="liste-parrainages"><p>Chargement...</p></div>
     </div>
@@ -4096,6 +4100,7 @@ async function chargerModerationAlbums() {
   liste.innerHTML = "<p>Chargement des membres...</p>";
   chargerVerificationsEnAttente();
   chargerParrainagesAdmin();
+  chargerConnexionsAdmin();
 
   const token = localStorage.getItem("outdoor_access_token");
 
@@ -4789,6 +4794,28 @@ async function chargerParrainage() {
       catch (e) { champ.select(); document.execCommand("copy"); this.textContent = "Lien copié ✔"; }
     };
   } catch (e) { console.error("[parrainage]", e); }
+}
+async function chargerConnexionsAdmin() {
+  const zone = document.getElementById("liste-connexions");
+  if (!zone) return;
+  try {
+    const token = localStorage.getItem("outdoor_access_token");
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/connexions_admin", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: "{}"
+    });
+    if (!r.ok) { zone.innerHTML = "<p>Indisponible.</p>"; return; }
+    const l = await r.json();
+    const f = function(d) {
+      return d ? new Date(d).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+    };
+    zone.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.92em;">' +
+      "<tr><th style='text-align:left;'>Membre</th><th style='text-align:left;'>Profil</th><th style='text-align:left;'>Dernière connexion</th><th style='text-align:left;'>Dernière activité</th></tr>" +
+      l.map(function(x) {
+        return "<tr><td>" + echapperTexte(x.pseudo) + "</td><td>" + echapperTexte(x.profil) + "</td><td>" + f(x.derniere_connexion) + "</td><td>" + f(x.derniere_activite) + "</td></tr>";
+      }).join("") + "</table></div>";
+  } catch (e) { zone.innerHTML = "<p>Indisponible.</p>"; }
 }
 async function chargerParrainagesAdmin() {
   const zone = document.getElementById("liste-parrainages");
