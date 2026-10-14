@@ -804,8 +804,7 @@
   </p>
 
   <p id="info-inscriptions-fermees" class="bandeau-offre" hidden>
-    🌿 Actuellement, l'inscription est ouverte aux femmes, aux couples et aux personnes trans. L'inscription des hommes seuls est momentanément fermée, afin de préserver un équilibre raisonnable entre les membres. Elle rouvrira dès que l'équilibre le permettra.
-  </p>
+    🌿 L'inscription est ouverte aux femmes, aux couples et aux personnes trans. Pour les hommes seuls, l'inscription se fait sur liste d'attente (sans abonnement) : laissez vos coordonnées et nous vous préviendrons dès qu'une place se libère, afin de préserver un équilibre raisonnable entre les membres.</p>
 
   <div class="cartes-inscription">
 
@@ -1970,7 +1969,7 @@ formulaires.forEach(function(config) {
         body: JSON.stringify({ p_profil: config.profil })
       });
       if (ro.ok && (await ro.json()) === false) {
-        alert("L'inscription des hommes seuls est momentanément fermée, afin de préserver un équilibre entre les membres. Merci de votre compréhension.");
+        alert("Pour les nouveaux hommes, l'inscription se fait sur liste d'attente (aucun abonnement requis). Merci de laisser vos coordonnées dans le formulaire « Inscription sur liste d'attente » de la page d'inscription.");
         return;
       }
     } catch (e) { console.error(e); }
@@ -4777,7 +4776,7 @@ function ajouterFormulaireListeAttente(carte) {
   f.id = "formulaire-attente";
   f.style.cssText = "margin-top:12px;text-align:left;";
   f.innerHTML =
-    '<p style="font-size:.95em;margin:0 0 8px;"><strong>📩 Me prévenir à la réouverture</strong></p>' +
+    '<p style="font-size:.95em;margin:0 0 8px;"><strong>📩 Inscription sur liste d\'attente</strong> — gratuite, sans abonnement</p>' +
     '<input type="text" id="attente-pseudo" placeholder="Pseudonyme" maxlength="40" required style="width:100%;margin-bottom:6px;">' +
     '<input type="email" id="attente-email" placeholder="Adresse e-mail" maxlength="120" required style="width:100%;margin-bottom:6px;">' +
     '<input type="text" id="attente-ville" placeholder="Ville (facultatif)" maxlength="60" style="width:100%;margin-bottom:8px;">' +
@@ -6550,7 +6549,7 @@ async function chargerVerificationsEnAttente() {
         if (carte) {
           const lien = carte.querySelector("a");
           const texte = carte.querySelector("p");
-          if (texte) texte.textContent = "Inscription des hommes seuls momentanément fermée, afin de préserver l'équilibre entre les membres.";
+          if (texte) texte.textContent = "Inscription sur liste d'attente pour les nouveaux hommes — aucun abonnement requis pour vous y inscrire.";
           if (lien) lien.remove();
           ajouterFormulaireListeAttente(carte);
         }
