@@ -1426,6 +1426,17 @@
   </form>
 </section>
 
+<section id="blog" class="section compacte">
+  <h2>Le blog En Plein Air</h2>
+  <div id="liste-articles"><p>Chargement...</p></div>
+  <a class="contour" href="#accueil">Retour à l'accueil</a>
+</section>
+
+<section id="article" class="section compacte">
+  <div id="contenu-article"><p>Chargement...</p></div>
+  <a class="contour" href="#blog">Tous les articles</a>
+</section>
+
 <section id="mentions-legales" class="section compacte page-legale">
   <p class="sourcil">INFORMATIONS LÉGALES</p>
   <h2>Mentions légales</h2>
@@ -1550,7 +1561,7 @@
   <p>Adultes uniquement • Respect • Sécurité</p>
   <p class="liens-footer">
     <a href="#securite">Sécurité</a> · <a href="#rapport">Signaler un problème</a><br>
-    <a href="#mentions-legales">Mentions légales</a> · <a href="#cgu">CGU / CGV</a> · <a href="#confidentialite">Confidentialité</a>
+    <a href="#blog">Blog</a> · <a href="#mentions-legales">Mentions légales</a> · <a href="#cgu">CGU / CGV</a> · <a href="#confidentialite">Confidentialité</a>
   </p>
 </footer>
 
@@ -1778,6 +1789,7 @@ const groupesPleinEcran = [
   ["chasse", "aventure-nature", "aventure-nuit", "aventure-defi"],
   ["decouvrir-aventures", "jouer-aventure"],
   ["creer-aventure"],
+  ["blog", "article"],
   ["mentions-legales", "cgu", "confidentialite"],
   ["parametres"],
   ["rendez-vous"]
@@ -1796,7 +1808,8 @@ function trouverGroupePleinEcran(id) {
 }
 
 function appliquerVuePleinEcran() {
-  const id = window.location.hash.replace("#", "");
+  let id = window.location.hash.replace("#", "");
+  if (id.indexOf("article-") === 0) id = "article";
   if ((id === "parametres" || id === "rendez-vous") && !localStorage.getItem("outdoor_access_token")) {
     window.location.hash = "connexion";
     return;
@@ -4830,6 +4843,72 @@ async function chargerListeAttenteAdmin() {
     });
   } catch (e) { zone.innerHTML = "<p>Indisponible.</p>"; }
 }
+
+// ===== Blog (articles envoyés par BabyLoveGrowth) =====
+function assainirArticle(html) {
+  const autorises = { P:1, H1:1, H2:1, H3:1, H4:1, H5:1, H6:1, UL:1, OL:1, LI:1, A:1, STRONG:1, B:1, EM:1, I:1, BR:1, BLOCKQUOTE:1, IMG:1, TABLE:1, THEAD:1, TBODY:1, TR:1, TD:1, TH:1, FIGURE:1, FIGCAPTION:1, SPAN:1, DIV:1, HR:1 };
+  const doc = new DOMParser().parseFromString("<div>" + html + "</div>", "text/html");
+  (function nettoyer(noeud) {
+    Array.from(noeud.childNodes).forEach(function(n) {
+      if (n.nodeType === 3) return;
+      if (n.nodeType !== 1) { n.remove(); return; }
+      if (!autorises[n.tagName]) { n.remove(); return; }
+      Array.from(n.attributes).forEach(function(a) {
+        const nom = a.name.toLowerCase();
+        const ok = (n.tagName === "A" && nom === "href") || (n.tagName === "IMG" && (nom === "src" || nom === "alt"));
+        if (!ok) { n.removeAttribute(a.name); return; }
+        if ((nom === "href" || nom === "src") && !/^(https?:|#|\/)/i.test(a.value.trim())) n.removeAttribute(a.name);
+      });
+      if (n.tagName === "A") { n.setAttribute("rel", "noopener noreferrer"); n.setAttribute("target", "_blank"); }
+      nettoyer(n);
+    });
+  })(doc.body.firstChild);
+  return doc.body.firstChild.innerHTML;
+}
+async function chargerBlog() {
+  const zone = document.getElementById("liste-articles");
+  if (!zone) return;
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/articles?select=slug,titre,description,image_url,created_at&order=created_at.desc&limit=50",
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } });
+    if (!r.ok) throw new Error("http");
+    const l = await r.json();
+    if (!l.length) { zone.innerHTML = "<p>Les premiers articles arrivent bientôt.</p>"; return; }
+    zone.innerHTML = l.map(function(a) {
+      const img = a.image_url ? '<img src="' + echapperTexte(a.image_url) + '" alt="" style="max-width:100%;border-radius:10px;margin-bottom:8px;" loading="lazy">' : "";
+      return '<article style="margin:0 0 22px;">' + img +
+        '<h3 style="margin:0 0 6px;"><a href="#article-' + encodeURIComponent(a.slug) + '">' + echapperTexte(a.titre) + "</a></h3>" +
+        (a.description ? "<p>" + echapperTexte(a.description) + "</p>" : "") +
+        '<p style="font-size:.85em;opacity:.7;">' + new Date(a.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + "</p></article>";
+    }).join("");
+  } catch (e) { zone.innerHTML = "<p>Blog momentanément indisponible.</p>"; }
+}
+async function chargerArticle(slug) {
+  const zone = document.getElementById("contenu-article");
+  if (!zone) return;
+  zone.innerHTML = "<p>Chargement...</p>";
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/articles?select=titre,description,contenu_html,image_url,created_at&slug=eq." + encodeURIComponent(slug) + "&limit=1",
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } });
+    if (!r.ok) throw new Error("http");
+    const l = await r.json();
+    if (!l.length) { zone.innerHTML = "<p>Article introuvable.</p>"; return; }
+    const a = l[0];
+    document.title = a.titre + " – En Plein Air";
+    zone.innerHTML = "<h2>" + echapperTexte(a.titre) + "</h2>" +
+      '<p style="font-size:.85em;opacity:.7;">' + new Date(a.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + "</p>" +
+      (a.image_url ? '<img src="' + echapperTexte(a.image_url) + '" alt="" style="max-width:100%;border-radius:10px;margin-bottom:12px;">' : "") +
+      '<div class="texte-article">' + assainirArticle(a.contenu_html) + "</div>";
+    window.scrollTo(0, 0);
+  } catch (e) { zone.innerHTML = "<p>Article momentanément indisponible.</p>"; }
+}
+function routeBlog() {
+  const h = window.location.hash.replace("#", "");
+  if (h === "blog") chargerBlog();
+  else if (h.indexOf("article-") === 0) chargerArticle(decodeURIComponent(h.slice(8)));
+}
+window.addEventListener("hashchange", routeBlog);
+window.addEventListener("load", routeBlog);
 
 // ===== Parrainage =====
 (function() {
