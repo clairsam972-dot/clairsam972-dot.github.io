@@ -1337,6 +1337,23 @@
       <div id="liste-verifications"><p>Chargement...</p></div>
     </div>
     <div class="moderation-verif">
+      <h3>Publier un article de blog</h3>
+      <form id="formulaire-article-admin">
+        <label for="art-titre">Titre</label>
+        <input type="text" id="art-titre" maxlength="200" required>
+        <label for="art-description">Description courte (pour la liste du blog, facultatif)</label>
+        <input type="text" id="art-description" maxlength="320">
+        <label for="art-image">Adresse de l'image à la une (https, facultatif)</label>
+        <input type="url" id="art-image" maxlength="500" placeholder="https://...">
+        <label for="art-contenu">Contenu (texte en Markdown ou en HTML)</label>
+        <textarea id="art-contenu" rows="12" required></textarea>
+        <label style="display:flex;align-items:center;gap:8px;margin:8px 0;"><input type="checkbox" id="art-publie" checked style="width:auto;"> Publier maintenant (décochez pour garder en brouillon)</label>
+        <button type="submit" class="primaire" id="bouton-article-admin">Publier l'article</button>
+        <p id="message-article-admin" style="font-size:.9em;margin:8px 0 0;"></p>
+      </form>
+      <p class="aide-champ">Relisez le texte avant de publier. Il est affiché tel quel sur la page de l'article, après nettoyage des éléments dangereux.</p>
+    </div>
+    <div class="moderation-verif">
       <h3>Liste d'attente (hommes)</h3>
       <div id="liste-attente-admin"><p>Chargement...</p></div>
     </div>
@@ -4118,6 +4135,7 @@ async function chargerModerationAlbums() {
   chargerParrainagesAdmin();
   chargerConnexionsAdmin();
   chargerListeAttenteAdmin();
+  initialiserPublicationArticle();
 
   const token = localStorage.getItem("outdoor_access_token");
 
@@ -4909,6 +4927,71 @@ function routeBlog() {
 }
 window.addEventListener("hashchange", routeBlog);
 window.addEventListener("load", routeBlog);
+
+// ===== Publication d'articles (administratrice) =====
+function markdownSimpleVersHtml(md) {
+  const echap = function(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); };
+  const inline = function(t) {
+    return echap(t)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2">$1</a>');
+  };
+  const sortie = [];
+  let liste = false;
+  md.split(/\r?\n/).forEach(function(l) {
+    const m = l.match(/^(#{1,6})\s+(.*)$/);
+    const li = l.match(/^\s*[-*]\s+(.*)$/);
+    if (li) { if (!liste) { sortie.push("<ul>"); liste = true; } sortie.push("<li>" + inline(li[1]) + "</li>"); return; }
+    if (liste) { sortie.push("</ul>"); liste = false; }
+    if (m) sortie.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">");
+    else if (l.trim()) sortie.push("<p>" + inline(l) + "</p>");
+  });
+  if (liste) sortie.push("</ul>");
+  return sortie.join("\n");
+}
+function initialiserPublicationArticle() {
+  const f = document.getElementById("formulaire-article-admin");
+  if (!f || f.dataset.pret) return;
+  f.dataset.pret = "1";
+  f.addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const msg = document.getElementById("message-article-admin");
+    const bouton = document.getElementById("bouton-article-admin");
+    const titre = document.getElementById("art-titre").value.trim();
+    const brut = document.getElementById("art-contenu").value.trim();
+    if (!titre || !brut) { msg.textContent = "Titre et contenu obligatoires."; return; }
+    const contenu = brut.charAt(0) === "<" ? brut : markdownSimpleVersHtml(brut);
+    const slug = titre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100);
+    const publie = document.getElementById("art-publie").checked;
+    bouton.disabled = true;
+    msg.textContent = "Publication en cours...";
+    try {
+      const token = localStorage.getItem("outdoor_access_token");
+      const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/publier_article", {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          p_titre: titre,
+          p_slug: slug,
+          p_contenu_html: contenu,
+          p_description: document.getElementById("art-description").value.trim() || null,
+          p_image_url: document.getElementById("art-image").value.trim() || null,
+          p_publie: publie
+        })
+      });
+      if (!r.ok) throw new Error("http " + r.status);
+      const retour = await r.json();
+      msg.textContent = "✅ Article enregistré (" + (publie ? "publié" : "brouillon") + ") : " + retour;
+      f.reset();
+      document.getElementById("art-publie").checked = true;
+    } catch (err) {
+      msg.textContent = "Échec de la publication. Vérifiez que vous êtes connectée à votre compte administrateur.";
+    } finally {
+      bouton.disabled = false;
+    }
+  });
+}
 
 // ===== Parrainage =====
 (function() {
