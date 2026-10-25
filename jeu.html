@@ -99,6 +99,7 @@ input.code { text-transform: uppercase; letter-spacing: 0.2em; font-size: 20px; 
       <div class="row" role="group" aria-label="Type de jeu">
         <button type="button" class="choice" data-mode="defis" aria-pressed="true">Défis de séduction</button>
         <button type="button" class="choice" data-mode="action" aria-pressed="false">Action ou vérité</button>
+        <button type="button" class="choice" data-mode="colonnes" aria-pressed="false">Jeu des 3 colonnes</button>
       </div>
       <label class="muted" for="tours">Nombre de tours</label>
       <select id="tours">
@@ -107,7 +108,7 @@ input.code { text-transform: uppercase; letter-spacing: 0.2em; font-size: 20px; 
         <option value="15">15 tours</option>
         <option value="20">20 tours</option>
       </select>
-      <p class="muted">Action ou vérité contient des questions intimes, facultatives et réservées aux adultes.</p>
+      <p class="muted">Action ou vérité et les 3 colonnes contiennent des propositions intimes, facultatives et réservées aux adultes. Pour les 3 colonnes, la personne visée doit accepter.</p>
       <button type="button" id="btn-creer" class="primary">Créer la partie</button>
     </div>
 
@@ -154,6 +155,23 @@ input.code { text-transform: uppercase; letter-spacing: 0.2em; font-size: 20px; 
       <button type="button" id="btn-action" style="flex:1">Action</button>
     </div>
 
+    <div id="zone-repartie" class="sous" hidden>
+      <label class="muted" for="sel-action">Action</label>
+      <select id="sel-action"></select>
+      <label class="muted" for="sel-cible">Personne concernée</label>
+      <select id="sel-cible"></select>
+      <button type="button" id="btn-valider-action" class="primary">Valider l'action</button>
+    </div>
+
+    <div id="zone-zone" class="sous" hidden>
+      <p class="muted" id="apercu-action"></p>
+      <label class="muted" for="sel-zone">Zone du corps</label>
+      <select id="sel-zone"></select>
+      <label class="muted" for="sel-condition">Durée ou condition</label>
+      <select id="sel-condition"></select>
+      <button type="button" id="btn-valider-zone" class="primary">Valider</button>
+    </div>
+
     <div class="sous" id="zone-defi">
       <span id="etiquette" class="tag"></span>
       <p class="defi" id="texte-defi"></p>
@@ -191,6 +209,49 @@ input.code { text-transform: uppercase; letter-spacing: 0.2em; font-size: 20px; 
   var LABELS = { doux: "Doux", piquant: "Piquant", ose: "Osé" };
 
   var etat = { niveau: "doux", mode: "defis", partieId: null, dernier: "", timer: null };
+  var modeCourant = null;
+  var cacheOptions = {};
+
+  function options(colonne) {
+    var cle = etat.partieId + ":" + colonne;
+    if (cacheOptions[cle]) return Promise.resolve(cacheOptions[cle]);
+    return rpc("jeu_options", { p_partie: etat.partieId, p_colonne: colonne }).then(function (liste) {
+      cacheOptions[cle] = liste;
+      return liste;
+    });
+  }
+  function remplir(select, valeurs, libelle) {
+    select.textContent = "";
+    valeurs.forEach(function (v) {
+      var o = document.createElement("option");
+      o.value = v;
+      o.textContent = libelle ? libelle(v) : v;
+      select.appendChild(o);
+    });
+  }
+  function libelleAction(v) { return v.split("{zone}").join("…").split("{cible}").join("la personne"); }
+  function preparerRepartie(s) {
+    var autres = s.joueurs.filter(function (j) { return j.ordre !== s.joueur_index; });
+    var select = $("sel-cible");
+    select.textContent = "";
+    autres.forEach(function (j) {
+      var o = document.createElement("option");
+      o.value = j.ordre;
+      o.textContent = j.nom;
+      select.appendChild(o);
+    });
+    if (!$("sel-action").options.length) {
+      options("a").then(function (liste) { remplir($("sel-action"), liste, libelleAction); });
+    }
+  }
+  function preparerZone() {
+    if (!$("sel-zone").options.length) {
+      options("zone").then(function (liste) { remplir($("sel-zone"), liste); });
+    }
+    if (!$("sel-condition").options.length) {
+      options("condition").then(function (liste) { remplir($("sel-condition"), liste); });
+    }
+  }
 
   function $(id) { return document.getElementById(id); }
   function montrer(id) {
@@ -389,17 +450,64 @@ input.code { text-transform: uppercase; letter-spacing: 0.2em; font-size: 20px; 
     $("zone-cible").hidden = true;
     $("btn-reussi").disabled = true;
     $("btn-passer").disabled = true;
+    $("zone-repartie").hidden = true;
+    $("zone-zone").hidden = true;
+
+    modeCourant = s.mode;
+    if (s.mode === "colonnes") {
+      $("btn-verite").textContent = "Pioche aléatoire";
+      $("btn-action").textContent = "Combinaison répartie";
+    } else {
+      $("btn-verite").textContent = "Vérité";
+      $("btn-action").textContent = "Action";
+    }
+
+    if (s.phase_colonnes === "a") {
+      $("zone-defi").hidden = true;
+      if (monTour) {
+        preparerRepartie(s);
+        $("zone-repartie").hidden = false;
+        $("msg-tour").textContent = "Choisissez l'action et la personne concernée.";
+      } else {
+        $("msg-tour").textContent = courant + " compose l'action.";
+      }
+      $("btn-passer").disabled = !(monTour && moi && moi.jokers > 0);
+      return;
+    }
+
+    if (s.phase_colonnes === "bc") {
+      $("zone-defi").hidden = true;
+      var nomCible = nomDeOrdre(s, s.cible_index);
+      var jeSuisCible = s.mes_sieges.indexOf(s.cible_index) !== -1;
+      $("apercu-action").textContent = "Action : " + s.col_a.split("{cible}").join(nomCible).split("{zone}").join("…");
+      if (jeSuisCible) {
+        preparerZone();
+        $("zone-zone").hidden = false;
+        $("msg-tour").textContent = "À vous de choisir la zone et la durée.";
+      } else {
+        $("msg-tour").textContent = nomCible + " choisit la zone et la durée.";
+      }
+      var jokerActif = moi && moi.jokers > 0;
+      $("btn-passer").disabled = !((monTour || jeSuisCible) && jokerActif);
+      return;
+    }
 
     if (s.en_attente_type) {
       $("zone-defi").hidden = true;
-      $("msg-tour").textContent = monTour
-        ? "À vous de choisir : Vérité ou Action."
-        : courant + " choisit entre Vérité et Action.";
+      if (s.mode === "colonnes") {
+        $("msg-tour").textContent = monTour
+          ? "À vous de choisir : pioche aléatoire, ou combinaison répartie."
+          : courant + " choisit entre la pioche et la combinaison.";
+      } else {
+        $("msg-tour").textContent = monTour
+          ? "À vous de choisir : Vérité ou Action."
+          : courant + " choisit entre Vérité et Action.";
+      }
       return;
     }
 
     $("zone-defi").hidden = false;
-    var type = s.mode === "action" ? (s.choix === "verite" ? " · Vérité" : " · Action") : "";
+    var type = s.mode === "action" ? (s.choix === "verite" ? " · Vérité" : " · Action") : (s.mode === "colonnes" ? " · 3 colonnes" : "");
     var etiq = $("etiquette");
     etiq.textContent = LABELS[s.niveau] + type;
     etiq.className = "tag " + s.niveau;
@@ -462,8 +570,20 @@ input.code { text-transform: uppercase; letter-spacing: 0.2em; font-size: 20px; 
       .catch(function (e) { if (!gererErreurConnexion(e)) erreur("err-jeu", e.message); });
   }
 
-  $("btn-verite").addEventListener("click", function () { action("jeu_choisir_type", { p_partie: etat.partieId, p_choix: "verite" }); });
-  $("btn-action").addEventListener("click", function () { action("jeu_choisir_type", { p_partie: etat.partieId, p_choix: "action" }); });
+  $("btn-verite").addEventListener("click", function () {
+    if (modeCourant === "colonnes") action("jeu_choisir_tirage", { p_partie: etat.partieId, p_tirage: "aleatoire" });
+    else action("jeu_choisir_type", { p_partie: etat.partieId, p_choix: "verite" });
+  });
+  $("btn-action").addEventListener("click", function () {
+    if (modeCourant === "colonnes") action("jeu_choisir_tirage", { p_partie: etat.partieId, p_tirage: "repartie" });
+    else action("jeu_choisir_type", { p_partie: etat.partieId, p_choix: "action" });
+  });
+  $("btn-valider-action").addEventListener("click", function () {
+    action("jeu_choisir_action", { p_partie: etat.partieId, p_texte: $("sel-action").value, p_cible: parseInt($("sel-cible").value, 10) });
+  });
+  $("btn-valider-zone").addEventListener("click", function () {
+    action("jeu_choisir_zone_condition", { p_partie: etat.partieId, p_zone: $("sel-zone").value, p_condition: $("sel-condition").value });
+  });
   $("btn-reussi").addEventListener("click", function () { action("jeu_reussi", { p_partie: etat.partieId }); });
   $("btn-passer").addEventListener("click", function () { action("jeu_passer", { p_partie: etat.partieId }); });
   $("btn-arreter").addEventListener("click", function () { action("jeu_arreter", { p_partie: etat.partieId }); });
