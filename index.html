@@ -267,9 +267,9 @@
     <a href="#chasse">La Chasse</a>
     <a href="#creer">Créateur</a>
     <a href="#histoires">Histoires</a>
-    <a href="jeu_secrets_du_plein_air.html">
-  🎴 Jeu Secrets du plein air
-</a>
+    <a href="jeu_secrets_du_plein_air.html" id="nav-jeu-secrets" style="display:none;">
+      🎴 Jeu Secrets du plein air
+    </a>
     <a href="#inscription" class="primaire" id="nav-inscription">Inscription +18</a>
     <a href="#connexion" class="contour" id="nav-connexion">Se connecter</a>
 
@@ -405,6 +405,12 @@
   </div>
 
 
+
+  <div class="carte" id="carte-jeu-secrets">
+    <h3>🎴 Jeu Secrets du plein air</h3>
+    <p>Retrouvez le jeu de cartes violet et jouez avec vos invités.</p>
+    <a class="primaire" href="jeu_secrets_du_plein_air.html">Ouvrir le jeu</a>
+  </div>
 
   <a class="primaire" href="#decouvrir-aventures">Découvrir les aventures</a>
   <a class="primaire" href="#annuaire-membres">Découvrir les membres</a>
@@ -1856,6 +1862,8 @@ function mettreAJourNavigation(connecte) {
   document.getElementById("nav-inscription").style.display = connecte ? "none" : "";
   document.getElementById("nav-connexion").style.display = connecte ? "none" : "";
   document.getElementById("nav-profil").style.display = connecte ? "" : "none";
+  const lienJeuSecrets = document.getElementById("nav-jeu-secrets");
+  if (lienJeuSecrets) lienJeuSecrets.style.display = connecte ? "" : "none";
   document.getElementById("nav-decouvrir").style.display = connecte ? "" : "none";
   document.getElementById("nav-annuaire").style.display = connecte ? "" : "none";
   document.getElementById("nav-chat-commun").style.display = connecte ? "" : "none";
