@@ -4903,7 +4903,7 @@ async function chargerBlog() {
     const l = await r.json();
     if (!l.length) { zone.innerHTML = "<p>Les premiers articles arrivent bientôt.</p>"; return; }
     zone.innerHTML = l.map(function(a) {
-      const img = a.image_url ? '<img src="' + echapperTexte(a.image_url) + '" alt="" style="max-width:100%;border-radius:10px;margin-bottom:8px;" loading="lazy">' : "";
+      const img = a.image_url ? '<img src="' + echapperTexte(a.image_url) + '" alt="' + echapperTexte(a.titre) + '" style="max-width:100%;border-radius:10px;margin-bottom:8px;" loading="lazy">' : "";
       return '<article style="margin:0 0 22px;">' + img +
         '<h3 style="margin:0 0 6px;"><a href="#article-' + encodeURIComponent(a.slug) + '">' + echapperTexte(a.titre) + "</a></h3>" +
         (a.description ? "<p>" + echapperTexte(a.description) + "</p>" : "") +
@@ -4923,9 +4923,17 @@ async function chargerArticle(slug) {
     if (!l.length) { zone.innerHTML = "<p>Article introuvable.</p>"; return; }
     const a = l[0];
     document.title = a.titre + " – En Plein Air";
+    var metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc && a.description) metaDesc.setAttribute("content", a.description);
+    var ogTitre = document.querySelector('meta[property="og:title"]');
+    if (ogTitre) ogTitre.setAttribute("content", a.titre + " – En Plein Air");
+    if (a.description) {
+      var ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogDesc) ogDesc.setAttribute("content", a.description);
+    }
     zone.innerHTML = "<h2>" + echapperTexte(a.titre) + "</h2>" +
       '<p style="font-size:.85em;opacity:.7;">' + new Date(a.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + "</p>" +
-      (a.image_url ? '<img src="' + echapperTexte(a.image_url) + '" alt="" style="max-width:100%;border-radius:10px;margin-bottom:12px;">' : "") +
+      (a.image_url ? '<img src="' + echapperTexte(a.image_url) + '" alt="' + echapperTexte(a.titre) + '" style="max-width:100%;border-radius:10px;margin-bottom:12px;">' : "") +
       '<div class="texte-article">' + assainirArticle(a.contenu_html) + "</div>";
     window.scrollTo(0, 0);
   } catch (e) { zone.innerHTML = "<p>Article momentanément indisponible.</p>"; }
