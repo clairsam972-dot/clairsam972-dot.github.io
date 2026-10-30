@@ -264,8 +264,6 @@
 
   <nav>
     <a href="#experiences">Rendez-vous</a>
-    <a href="#chasse">La Chasse</a>
-    <a href="#creer">Créateur</a>
     <a href="#histoires">Histoires</a>
     <a href="jeu_secrets_du_plein_air_membres.html" id="nav-jeu-secrets" style="display:none;">
       🎴 Jeu Secrets du plein air
@@ -610,160 +608,6 @@
   </form>
 
   <div id="liste-rdv" style="margin-top:20px;"><p>Chargement…</p></div>
-</section>
-
-<section id="chasse" class="section sombre">
-  <p><a class="contour" href="#experiences">← Retour à l'accueil</a></p>
-  <p class="sourcil">LA CHASSE</p>
-  <h2>Partez à l'aventure</h2>
-
-  <p>
-    Des aventures en plein air, des défis et des rencontres
-    pour sortir des sentiers battus.
-  </p>
-
-  <div class="cartes-chasse">
-
-    <article class="carte-chasse">
-      <div class="icone">🌲</div>
-      <h3>Évasion nature</h3>
-      <p>
-        Une aventure au cœur de la nature pour découvrir
-        des lieux insolites et profiter du plein air.
-      </p>
-      <div class="infos">
-        <span>📍 Île-de-France</span>
-        <span>👥 2 à 6 personnes</span>
-        <span>⏱️ 2 à 4 h</span>
-        <span>✏️ Création gratuite</span>
-      </div>
-      <a class="primaire" href="#aventure-nature">Voir l'aventure</a>
-    </article>
-
-    <article class="carte-chasse">
-      <div class="icone">🔥</div>
-      <h3>Nuit sauvage</h3>
-      <p>
-        Une expérience nocturne pour celles et ceux
-        qui aiment l'aventure et l'imprévu.
-      </p>
-      <div class="infos">
-        <span>📍 Île-de-France</span>
-        <span>👥 2 à 8 personnes</span>
-        <span>⏱️ Une soirée</span>
-        <span>✏️ Création gratuite</span>
-      </div>
-      <a class="primaire" href="#aventure-nuit">Voir l'aventure</a>
-    </article>
-
-    <article class="carte-chasse">
-      <div class="icone">🗺️</div>
-      <h3>Défi mystère</h3>
-      <p>
-        Une chasse au trésor moderne avec des énigmes,
-        des défis et un parcours à découvrir.
-      </p>
-      <div class="infos">
-        <span>📍 Lieu secret</span>
-        <span>👥 2 à 10 personnes</span>
-        <span>⏱️ 3 à 5 h</span>
-        <span>✏️ Création gratuite</span>
-      </div>
-      <a class="primaire" href="#aventure-defi">Voir l'aventure</a>
-    </article>
-
-  </div>
-</section>
-<section id="creer" class="section">
-  <p class="sourcil">CRÉATEUR</p>
-  <h2>Créez votre propre aventure</h2>
-  <p>
-    Imaginez votre parcours, partagez vos idées et proposez
-    de nouvelles expériences à la communauté.
-    <strong>Créer une aventure est et restera toujours gratuit.</strong>
-  </p>
-
-  <div class="actes">
-    <button class="primaire" onclick="allerCreerAventure()">Créer une aventure — Gratuit</button>
-    <a class="contour" href="#chasse">En savoir plus</a>
-  </div>
-
-  <article class="tarifs">
-    <h3>Comment ça marche côté tarifs ?</h3>
-    <p>✅ Inscription gratuite pour tout le monde.</p>
-    <p>✅ Créer et proposer une aventure : gratuit.</p>
-    <p>🔑 Accès à toutes les aventures : gratuit pour les femmes et les couples, 14,90 €/mois pour les hommes et les personnes trans (la première année offerte aux 20 premiers inscrits est désormais épuisée).</p>
-    <p>🃏 Bloqué sur une énigme ? Un joker débloque la réponse pour 10€.</p>
-  </article>
-</section>
-
-<section id="aventure-nature" class="section">
-  <p><a class="contour" href="#chasse">← Retour à la chasse</a></p>
-  <p class="sourcil">ÉVASION NATURE</p>
-  <h2>Une aventure au cœur de la nature</h2>
-
-  <p>
-    Partez à la découverte de lieux insolites en
-    Île-de-France et profitez d'une aventure en plein air.
-  </p>
-
-  <div class="infos">
-    <span>📍 Île-de-France</span>
-    <span>👥 2 à 6 personnes</span>
-    <span>⏱️ 2 à 4 h</span>
-    <span>✏️ Création gratuite</span>
-  </div>
-
-  <div class="actes">
-    <button type="button" class="primaire" onclick="creerAventureCategorie('nature')">✏️ Créer l'aventure</button>
-    <button type="button" class="contour" onclick="participerAventureCategorie('nature')">🔍 Participer à une aventure</button>
-  </div>
-</section>
-
-<section id="aventure-nuit" class="section">
-  <p><a class="contour" href="#chasse">← Retour à la chasse</a></p>
-  <p class="sourcil">NUIT SAUVAGE</p>
-  <h2>Une expérience nocturne et sauvage</h2>
-
-  <p>
-    Une aventure en soirée pensée pour celles et ceux qui
-    aiment l'imprévu, à vivre en pleine nature.
-  </p>
-
-  <div class="infos">
-    <span>📍 Île-de-France</span>
-    <span>👥 2 à 8 personnes</span>
-    <span>⏱️ Une soirée</span>
-    <span>✏️ Création gratuite</span>
-  </div>
-
-  <div class="actes">
-    <button type="button" class="primaire" onclick="creerAventureCategorie('nuit')">✏️ Créer l'aventure</button>
-    <button type="button" class="contour" onclick="participerAventureCategorie('nuit')">🔍 Participer à une aventure</button>
-  </div>
-</section>
-
-<section id="aventure-defi" class="section">
-  <p><a class="contour" href="#chasse">← Retour à la chasse</a></p>
-  <p class="sourcil">DÉFI MYSTÈRE</p>
-  <h2>Une chasse au trésor moderne</h2>
-
-  <p>
-    Résolvez des énigmes et relevez des défis le long d'un
-    parcours tenu secret jusqu'au dernier moment.
-  </p>
-
-  <div class="infos">
-    <span>📍 Lieu secret</span>
-    <span>👥 2 à 10 personnes</span>
-    <span>⏱️ 3 à 5 h</span>
-    <span>✏️ Création gratuite</span>
-  </div>
-
-  <div class="actes">
-    <button type="button" class="primaire" onclick="creerAventureCategorie('defi')">✏️ Créer l'aventure</button>
-    <button type="button" class="contour" onclick="participerAventureCategorie('defi')">🔍 Participer à une aventure</button>
-  </div>
 </section>
 
 <section id="histoires" class="section">
@@ -1808,10 +1652,9 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 });
 
-// Vue plein écran : "La Chasse" et "Découvrir les aventures" masquent le
+// Vue plein écran : "Découvrir les aventures" masque le
 // reste de la page pour n'afficher que la section concernée, avec retour.
 const groupesPleinEcran = [
-  ["chasse", "aventure-nature", "aventure-nuit", "aventure-defi"],
   ["decouvrir-aventures", "jouer-aventure"],
   ["creer-aventure"],
   ["blog", "article"],
