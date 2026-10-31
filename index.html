@@ -1185,6 +1185,23 @@
     </div>
   </div>
 
+<div id="bulles-membres" class="bulles-membres" style="display:none;" aria-live="polite">
+  <button type="button" class="bulles-fermer" id="bulles-fermer">Masquer</button>
+  <div class="bulles-liste" id="bulles-liste"></div>
+</div>
+
+<div id="fiche-membre" class="fiche-membre-fond" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="fiche-titre">
+  <div class="fiche-membre-boite">
+    <img id="fiche-photo" class="fiche-photo" alt="" style="display:none;">
+    <h2 id="fiche-titre"></h2>
+    <p class="fiche-meta" id="fiche-meta"></p>
+    <div class="fiche-bloc" id="fiche-presentation"></div>
+    <div class="fiche-bloc" id="fiche-recherche"></div>
+    <div class="fiche-bloc" id="fiche-envies"></div>
+    <button type="button" class="contour fiche-fermer" id="fiche-fermer">Fermer</button>
+  </div>
+</div>
+
   <div id="chat-commun-verrou" style="display:none;">
     <p>Un abonnement actif (14,90 €/mois) est nécessaire pour accéder au chat commun.</p>
     <a class="primaire" href="#espace-membre">Voir mon abonnement</a>
@@ -6826,22 +6843,6 @@ async function chargerVerificationsEnAttente() {
   <span class="flash-texte" id="flash-aventure-texte"></span>
   <a href="#decouvrir-aventures" id="flash-aventure-lien">Voir</a>
   <button type="button" id="flash-aventure-fermer" aria-label="Fermer">×</button>
-</div>
-<div id="bulles-membres" class="bulles-membres" style="display:none;" aria-live="polite">
-  <button type="button" class="bulles-fermer" id="bulles-fermer">Masquer</button>
-  <div class="bulles-liste" id="bulles-liste"></div>
-</div>
-
-<div id="fiche-membre" class="fiche-membre-fond" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="fiche-titre">
-  <div class="fiche-membre-boite">
-    <img id="fiche-photo" class="fiche-photo" alt="" style="display:none;">
-    <h2 id="fiche-titre"></h2>
-    <p class="fiche-meta" id="fiche-meta"></p>
-    <div class="fiche-bloc" id="fiche-presentation"></div>
-    <div class="fiche-bloc" id="fiche-recherche"></div>
-    <div class="fiche-bloc" id="fiche-envies"></div>
-    <button type="button" class="contour fiche-fermer" id="fiche-fermer">Fermer</button>
-  </div>
 </div>
 </body>
 </html>
