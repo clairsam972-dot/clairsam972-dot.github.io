@@ -5371,7 +5371,7 @@ async function chargerChatCommun(defilerEnBas) {
     );
     if (!response.ok) throw new Error(await response.text());
 
-    const messages = (await response.json()).reverse();
+    const messages = await response.json();
     let estAdmin = false;
     try { estAdmin = (await appelRpc("est_admin_site")) === true; } catch (e) { estAdmin = false; }
     const container = document.getElementById("chat-commun-messages");
@@ -5515,8 +5515,9 @@ async function chargerChatCommun(defilerEnBas) {
       container.appendChild(bulle);
     });
 
-    if (defilerEnBas || etaitEnBas) {
-      container.scrollTop = container.scrollHeight;
+    // Les messages les plus récents sont en haut : on remonte tout en haut à l'envoi
+    if (defilerEnBas) {
+      container.scrollTop = 0;
     }
   } catch (error) {
     console.error("Erreur chat commun :", error);
