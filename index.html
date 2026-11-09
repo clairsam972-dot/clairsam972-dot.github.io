@@ -300,6 +300,11 @@
   </nav>
 </header>
 
+<div id="bandeau-acces-limite" class="bandeau-offre" role="status" style="display:none; margin:0; border-radius:0; text-align:center;">
+  Votre accès est limité. Pour participer aux aventures et accéder au chat commun, abonnez-vous : 14,90 € par mois, sans engagement.
+  <a href="#espace-membre" style="font-weight:600; margin-left:6px;">Voir mon abonnement</a>
+</div>
+
 <main>
 
 <section id="espace-membre" class="section">
@@ -672,9 +677,6 @@
   <p>
     L'inscription est gratuite. Choisissez votre profil pour rejoindre la communauté.
   </p>
-
-  <p id="info-inscriptions-fermees" class="bandeau-offre" hidden>
-    🌿 L'inscription est ouverte aux femmes, aux couples et aux personnes trans. Pour les hommes seuls, l'inscription se fait sur liste d'attente (sans abonnement) : laissez vos coordonnées et nous vous préviendrons dès qu'une place se libère, afin de préserver un équilibre raisonnable entre les membres.</p>
 
   <div class="cartes-inscription">
 
@@ -1758,6 +1760,7 @@ function mettreAJourNavigation(connecte) {
   document.getElementById("nav-notifications").style.display = connecte ? "" : "none";
   document.getElementById("mes-messages").style.display = connecte ? "" : "none";
   if (!connecte) afficherBadgeMessages(0);
+  if (!connecte) document.getElementById("bandeau-acces-limite").style.display = "none";
   document.getElementById("chat-commun").style.display = connecte ? "" : "none";
   document.getElementById("nav-creer-aventure").style.display = connecte ? "" : "none";
   document.getElementById("nav-deconnexion").style.display = connecte ? "" : "none";
@@ -1897,7 +1900,6 @@ formulaires.forEach(function(config) {
         body: JSON.stringify({ p_profil: config.profil })
       });
       if (ro.ok && (await ro.json()) === false) {
-        alert("Pour les nouveaux hommes, l'inscription se fait sur liste d'attente (aucun abonnement requis). Merci de laisser vos coordonnées dans le formulaire « Inscription sur liste d'attente » de la page d'inscription.");
         return;
       }
     } catch (e) { console.error(e); }
@@ -2139,6 +2141,8 @@ function aAcces(profil) {
 
 // Affiche le statut d'abonnement du membre et le bouton pour s'abonner
 function afficherStatutAbonnement(profil) {
+  const bandeauLimite = document.getElementById("bandeau-acces-limite");
+  if (bandeauLimite) bandeauLimite.style.display = aAcces(profil) ? "none" : "";
   const statut = document.getElementById("statut-abonnement");
   const bouton = document.getElementById("bouton-abonnement");
   document.getElementById("remerciement-premiers").style.display = offreLancementActive(profil) ? "" : "none";
@@ -3394,7 +3398,7 @@ async function chargerListeAventures() {
   const conteneur = document.getElementById("liste-aventures");
 
   if (!aAcces(window.monProfilCourant)) {
-    conteneur.innerHTML = '<p>Un abonnement actif (14,90 €/mois) est nécessaire pour découvrir les aventures. <a href="#espace-membre">Voir mon profil</a></p>';
+    conteneur.innerHTML = '<p>Les aventures sont réservées aux abonnés. Abonnez-vous pour découvrir les aventures, participer et accéder au chat commun : 14,90 € par mois, sans engagement.</p><p><a class="primaire" href="#espace-membre" style="display:inline-block;padding:8px 16px;border-radius:999px;text-decoration:none;">S\'abonner — voir mon abonnement</a></p>';
     return;
   }
 
@@ -6812,8 +6816,6 @@ async function chargerVerificationsEnAttente() {
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(ouverte){
       if (ouverte !== false) return;
-      const info = document.getElementById("info-inscriptions-fermees");
-      if (info) info.hidden = false;
       ["homme"].forEach(function(profil) {
         const carte = document.querySelector('[data-profil-carte="' + profil + '"]');
         if (carte) {
