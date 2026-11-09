@@ -5407,6 +5407,8 @@ async function chargerChatCommun(defilerEnBas) {
             video.controls = true;
             video.playsInline = true;
             video.preload = "metadata";
+            video.controlsList = "nodownload";
+            video.addEventListener("contextmenu", function(e) { e.preventDefault(); });
             video.style.cssText = "max-width:100%;border-radius:10px;";
             zoneMedia.appendChild(video);
           } else {
@@ -5414,6 +5416,8 @@ async function chargerChatCommun(defilerEnBas) {
             image.src = url;
             image.alt = "Photo partagée dans le chat";
             image.style.cssText = "max-width:100%;border-radius:10px;cursor:zoom-in;";
+            image.draggable = false;
+            image.addEventListener("contextmenu", function(e) { e.preventDefault(); });
             image.addEventListener("click", function() { ouvrirVisionneuse(url); });
             zoneMedia.appendChild(image);
           }
@@ -5447,6 +5451,33 @@ async function chargerChatCommun(defilerEnBas) {
           }
         });
         bulle.appendChild(boutonSignal);
+      } else {
+        const boutonSuppr = document.createElement("button");
+        boutonSuppr.type = "button";
+        boutonSuppr.className = "contour";
+        boutonSuppr.style.cssText = "font-size:.75em;margin-top:4px;";
+        boutonSuppr.textContent = "🗑 Supprimer";
+        boutonSuppr.addEventListener("click", async function() {
+          if (!confirm("Supprimer ce message ?")) return;
+          try {
+            const rr = await fetch(SUPABASE_URL + "/rest/v1/rpc/supprimer_mon_message_chat", {
+              method: "POST",
+              headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+              body: JSON.stringify({ p_id: m.id })
+            });
+            if (!rr.ok) throw new Error(await lireMessageErreur(rr, "Suppression impossible."));
+            const txt = await rr.text();
+            const cle = txt ? JSON.parse(txt) : null;
+            if (cle) {
+              const nom = cle.split("/").slice(2).join("/");
+              await appelMediasR2({ action: "delete", section: "chat", nom: nom });
+            }
+            await chargerChatCommun(false);
+          } catch (e) {
+            alert(e.message || "Suppression impossible.");
+          }
+        });
+        bulle.appendChild(boutonSuppr);
       }
 
       container.appendChild(bulle);
@@ -5499,6 +5530,9 @@ document.getElementById("chat-commun-input").addEventListener("keydown", functio
 });
 
 // Photo ou mini-vidéo dans le chat commun (abonnés uniquement)
+document.getElementById("visionneuse-image").draggable = false;
+document.getElementById("visionneuse-image").addEventListener("contextmenu", function(e) { e.preventDefault(); });
+
 document.getElementById("bouton-media-commun").addEventListener("click", function() {
   document.getElementById("chat-commun-media").click();
 });
