@@ -5369,6 +5369,8 @@ async function chargerChatCommun(defilerEnBas) {
     if (!response.ok) throw new Error(await response.text());
 
     const messages = (await response.json()).reverse();
+    let estAdmin = false;
+    try { estAdmin = (await appelRpc("est_admin_site")) === true; } catch (e) { estAdmin = false; }
     const container = document.getElementById("chat-commun-messages");
     const etaitEnBas = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
 
@@ -5451,6 +5453,33 @@ async function chargerChatCommun(defilerEnBas) {
           }
         });
         bulle.appendChild(boutonSignal);
+        if (estAdmin) {
+          const boutonAdmin = document.createElement("button");
+          boutonAdmin.type = "button";
+          boutonAdmin.className = "contour";
+          boutonAdmin.style.cssText = "font-size:.75em;margin-top:4px;margin-left:4px;";
+          boutonAdmin.textContent = "🗑 Supprimer (admin)";
+          boutonAdmin.addEventListener("click", async function() {
+            if (!confirm("Supprimer ce message de la communauté ?")) return;
+            try {
+              const ra = await fetch(SUPABASE_URL + "/rest/v1/rpc/supprimer_message_chat_admin", {
+                method: "POST",
+                headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify({ p_id: m.id })
+              });
+              if (!ra.ok) throw new Error(await lireMessageErreur(ra, "Suppression impossible."));
+              const txt = await ra.text();
+              const cle = txt ? JSON.parse(txt) : null;
+              if (cle) {
+                await appelMediasR2({ action: "delete", section: "chat", nom: cle.split("/").slice(2).join("/"), owner: m.user_id });
+              }
+              await chargerChatCommun(false);
+            } catch (e) {
+              alert(e.message || "Suppression impossible.");
+            }
+          });
+          bulle.appendChild(boutonAdmin);
+        }
       } else {
         const boutonSuppr = document.createElement("button");
         boutonSuppr.type = "button";
