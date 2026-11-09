@@ -1213,6 +1213,8 @@
     <div id="chat-commun-messages" class="chat-messages" style="height:400px;"></div>
     <div class="chat-input-zone">
       <input type="text" id="chat-commun-input" maxlength="1000" placeholder="Écris ton message à la communauté...">
+      <button type="button" class="contour" id="bouton-media-commun" title="Ajouter une photo ou une mini-vidéo">📎</button>
+      <input type="file" id="chat-commun-media" accept="image/*,video/*" style="display:none;">
       <button type="button" id="bouton-envoyer-commun">Envoyer</button>
     </div>
   </div>
@@ -2010,9 +2012,10 @@ async function appelMediasR2(corps) {
 
 async function envoyerVersR2(section, file) {
   const type = file.type || (/\.(mp4|mov|m4v|webm|3gp)$/i.test(file.name) ? "video/mp4" : "image/jpeg");
-  const { url } = await appelMediasR2({ action: "upload", section: section, nom: file.name, type: type, taille: file.size });
+  const { url, cle } = await appelMediasR2({ action: "upload", section: section, nom: file.name, type: type, taille: file.size });
   const reponse = await fetch(url, { method: "PUT", headers: { "Content-Type": type }, body: file });
   if (!reponse.ok) throw new Error("Échec de l'envoi (" + reponse.status + ")");
+  return cle;
 }
 let idUtilisateurCourant = null;
 
@@ -5391,6 +5394,61 @@ async function chargerChatCommun(defilerEnBas) {
 
       bulle.appendChild(auteur);
       bulle.appendChild(texte);
+
+      if (m.media_cle) {
+        const zoneMedia = document.createElement("div");
+        zoneMedia.className = "chat-media";
+        bulle.appendChild(zoneMedia);
+        signerFichierMedia(m.media_cle).then(function(url) {
+          if (!url) { zoneMedia.textContent = "Média indisponible."; return; }
+          if (m.media_video) {
+            const video = document.createElement("video");
+            video.src = url;
+            video.controls = true;
+            video.playsInline = true;
+            video.preload = "metadata";
+            video.style.cssText = "max-width:100%;border-radius:10px;";
+            zoneMedia.appendChild(video);
+          } else {
+            const image = document.createElement("img");
+            image.src = url;
+            image.alt = "Photo partagée dans le chat";
+            image.style.cssText = "max-width:100%;border-radius:10px;cursor:zoom-in;";
+            image.addEventListener("click", function() { ouvrirVisionneuse(url); });
+            zoneMedia.appendChild(image);
+          }
+        });
+      }
+
+      if (m.user_id !== idUtilisateurCourant) {
+        const boutonSignal = document.createElement("button");
+        boutonSignal.type = "button";
+        boutonSignal.className = "contour";
+        boutonSignal.style.cssText = "font-size:.75em;margin-top:4px;";
+        boutonSignal.textContent = "🚩 Signaler";
+        boutonSignal.addEventListener("click", async function() {
+          if (!confirm("Signaler ce message à la modération ?")) return;
+          try {
+            const rs = await fetch(SUPABASE_URL + "/rest/v1/signalements", {
+              method: "POST",
+              headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json", "Prefer": "return=minimal" },
+              body: JSON.stringify({
+                user_id: idUtilisateurCourant,
+                motif: "Contenu à signaler",
+                message: "Chat commun : " + (m.content || "(sans texte)") + (m.media_cle ? " [média : " + m.media_cle + "]" : ""),
+                membre_signale: m.user_id
+              })
+            });
+            if (!rs.ok) throw new Error("signalement");
+            boutonSignal.textContent = "✅ Signalé";
+            boutonSignal.disabled = true;
+          } catch (e) {
+            alert("Signalement impossible. Réessayez plus tard.");
+          }
+        });
+        bulle.appendChild(boutonSignal);
+      }
+
       container.appendChild(bulle);
     });
 
@@ -5438,6 +5496,60 @@ const envoyerMessageCommun = unSeulALaFois(async function() {
 document.getElementById("bouton-envoyer-commun").addEventListener("click", envoyerMessageCommun);
 document.getElementById("chat-commun-input").addEventListener("keydown", function(e) {
   if (e.key === "Enter") envoyerMessageCommun();
+});
+
+// Photo ou mini-vidéo dans le chat commun (abonnés uniquement)
+document.getElementById("bouton-media-commun").addEventListener("click", function() {
+  document.getElementById("chat-commun-media").click();
+});
+document.getElementById("chat-commun-media").addEventListener("change", async function() {
+  const fichier = this.files[0];
+  this.value = "";
+  if (!fichier) return;
+  const token = localStorage.getItem("outdoor_access_token");
+  if (!token || !window.monProfilCourant) return;
+  const bouton = document.getElementById("bouton-media-commun");
+  const estVideo = /^video\//.test(fichier.type) || /\.(mp4|mov|m4v|webm|3gp)$/i.test(fichier.name);
+  let pret = null;
+  try {
+    pret = estVideo ? await preparerVideo(fichier, bouton) : await convertirSiBesoin(fichier);
+  } catch (e) {
+    alert("Ce fichier ne peut pas être lu. Essayez un autre format.");
+    return;
+  }
+  if (!pret) return;
+  if (pret.size > TAILLE_MAX_MEDIA) {
+    alert("Le fichier est trop volumineux (50 Mo maximum).");
+    return;
+  }
+  const legende = document.getElementById("chat-commun-input").value.trim();
+  await avecChargement(bouton, "Envoi...", async function() {
+    try {
+      const cle = await envoyerVersR2("chat", pret);
+      const reponse = await fetch(SUPABASE_URL + "/rest/v1/messages_communs", {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({
+          user_id: idUtilisateurCourant,
+          pseudonyme: window.monProfilCourant.Pseudonyme,
+          content: legende,
+          media_cle: cle,
+          media_video: estVideo
+        })
+      });
+      if (!reponse.ok) throw new Error(await lireMessageErreur(reponse, "Impossible d'envoyer le média."));
+      document.getElementById("chat-commun-input").value = "";
+      await chargerChatCommun(true);
+    } catch (error) {
+      console.error(error);
+      alert("Envoi impossible : " + error.message);
+    }
+  });
 });
 
 // Histoires & fantasmes écrits par les membres (gratuits ou abonnés)
